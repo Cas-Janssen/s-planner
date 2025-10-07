@@ -1,14 +1,10 @@
-import { Board, Column, Task } from "@prisma/client";
+import { BoardWithDetails } from "@/lib/prismatypes";
 
-interface BoardContainerProps {
-  readonly data: Board & {
-    readonly columns: (Column & {
-      readonly tasks: Task[];
-    })[];
-  };
-}
-
-export default function BoardContainer({ data }: BoardContainerProps) {
+export default function BoardContainer({
+  data,
+}: {
+  readonly data: BoardWithDetails;
+}) {
   return (
     <div>
       <h2>{data.title}</h2>

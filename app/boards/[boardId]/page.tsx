@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import BoardContainer from "./_components/board";
 import { notFound } from "next/navigation";
+import { BoardWithDetails } from "@/lib/prismatypes";
 
 interface BoardIdPageProps {
   readonly params: Promise<{
@@ -11,7 +12,7 @@ interface BoardIdPageProps {
 export default async function BoardDetailPage({ params }: BoardIdPageProps) {
   const { boardId } = await params;
 
-  const board = await prisma.board.findUnique({
+  const board: BoardWithDetails | null = await prisma.board.findUnique({
     where: { id: boardId },
     include: {
       columns: {
