@@ -13,11 +13,11 @@ export default function Header() {
         <Link className={styles.navLink} href="/">
           Home
         </Link>
-        <Link className={styles.navLink} href="/account">
+        <Link className={styles.navLink} href="/user">
           Account
         </Link>
-        <Link className={styles.navLink} href="/about">
-          About
+        <Link className={styles.navLink} href="/boards">
+          Boards
         </Link>
       </nav>
     </header>
