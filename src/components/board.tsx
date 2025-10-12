@@ -1,4 +1,4 @@
-import { BoardWithDetails } from "@/prisma/prismaTypes";
+import { BoardWithDetails } from "#/prisma/prismaTypes";
 
 export default function BoardContainer({
   data,

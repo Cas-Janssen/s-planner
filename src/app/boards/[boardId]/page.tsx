@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import BoardContainer from "@/components/board";
 import { notFound } from "next/navigation";
-import { BoardWithDetails } from "@/prisma/prismaTypes";
+import { BoardWithDetails } from "#/prisma/prismaTypes";
 
 interface BoardIdPageProps {
   readonly params: Promise<{

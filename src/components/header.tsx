@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import logo from "@/public/globe.svg";
+import logo from "#/public/globe.svg";
 
 export default function Header() {
   return (

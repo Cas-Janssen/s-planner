@@ -10,7 +10,7 @@ export default function Footer() {
             href="https://casjanssen.net/s-planner"
             className="hover:underline"
           >
-            S-Planner™
+            {process.env.NEXT_PUBLIC_APP_NAME}™
           </Link>
           . All Rights Reserved.
         </span>
