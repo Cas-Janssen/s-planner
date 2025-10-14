@@ -1,49 +1,24 @@
-interface AuthResult {
-  success: boolean;
-  error?: string;
-}
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import prisma from "@/lib/prisma";
+import { nextCookies } from "better-auth/next-js";
 
-export async function registerUserWithEmail(
-  email: string,
-  password: string,
-  name: string
-): Promise<AuthResult> {
-  try {
-    console.log("Registering user:", { email, name });
-    return { success: true };
-  } catch (error) {
-    console.error("Error registering user:", error);
-    return { success: false, error: "An unexpected error occurred" };
-  }
-}
-
-export async function loginUserWithEmail(
-  email: string,
-  password: string
-): Promise<AuthResult> {
-  try {
-    console.log("Logging in user:", { email });
-    return { success: true };
-  } catch (error) {
-    console.error("Error logging in user:", error);
-    return { success: false, error: "An unexpected error occurred" };
-  }
-}
-
-export async function loginUserWithProvider(
-  provider: "google" | "github"
-): Promise<void> {
-  try {
-    console.log("Logging in user with provider:", provider);
-  } catch (error) {
-    console.error("Error logging in user with provider:", error);
-  }
-}
-
-export async function logoutUser(): Promise<void> {
-  try {
-    console.log("Logging out user");
-  } catch (error) {
-    console.error("Error logging out user:", error);
-  }
-}
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: "mongodb",
+  }),
+  emailAndPassword: {
+    enabled: true,
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID! as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET! as string,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID! as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET! as string,
+    },
+  },
+  plugins: [nextCookies()],
+});
