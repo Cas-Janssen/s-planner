@@ -1,7 +1,7 @@
 "use client";
 
-import { LoadingButton } from "@/components/loading-button";
-import { PasswordInput } from "@/components/password-input";
+import { LoadingButton } from "@/app/(auth)/_components/loading-button";
+import { PasswordInput } from "@/app/(auth)/_components/password-input";
 import {
   Card,
   CardContent,
@@ -43,10 +43,9 @@ const signUpSchema = z
 type SignUpValues = z.infer<typeof signUpSchema>;
 
 export function SignUpForm() {
-  const [error, setError] = useState<string | null>(null);
-
   const router = useRouter();
 
+  const [error, setError] = useState<string | null>(null);
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -70,7 +69,7 @@ export function SignUpForm() {
     if (error) {
       setError(error.message || "Something went wrong");
     } else {
-      router.push("/dashboard");
+      router.push("/account");
     }
   }
 

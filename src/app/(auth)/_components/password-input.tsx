@@ -14,6 +14,7 @@ export function PasswordInput({
       <Input
         type={showPassword ? "text" : "password"}
         className={cn("pr-10 [&::-ms-reveal]:hidden", className)}
+        autoComplete="current-password"
         {...props}
       />
       <button

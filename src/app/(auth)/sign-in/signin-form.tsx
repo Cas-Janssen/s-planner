@@ -2,8 +2,8 @@
 
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
-import { LoadingButton } from "@/components/loading-button";
-import { PasswordInput } from "@/components/password-input";
+import { LoadingButton } from "@/app/(auth)/_components/loading-button";
+import { PasswordInput } from "@/app/(auth)/_components/password-input";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,6 +30,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 
 const signInSchema = z.object({
   email: z.email({ message: "Please enter a valid email" }),
@@ -40,10 +41,10 @@ const signInSchema = z.object({
 type SignInValues = z.infer<typeof signInSchema>;
 
 export function SignInForm() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const redirect = searchParams.get("redirect");
@@ -72,6 +73,7 @@ export function SignInForm() {
     if (error) {
       setError(error.message || "Something went wrong");
     } else {
+      console.log("login successful");
       router.push(redirect ?? "/account");
     }
   }
@@ -113,6 +115,7 @@ export function SignInForm() {
                     <Input
                       type="email"
                       placeholder="your@email.com"
+                      autoComplete="email"
                       {...field}
                     />
                   </FormControl>
@@ -137,7 +140,7 @@ export function SignInForm() {
                   </div>
                   <FormControl>
                     <PasswordInput
-                      autoComplete="current-password"
+                      type="password"
                       placeholder="Password"
                       {...field}
                     />
