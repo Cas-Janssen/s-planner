@@ -1,7 +1,7 @@
 "use client";
 
-import { LoadingButton } from "@/app/(auth)/_components/loading-button";
-import { PasswordInput } from "@/app/(auth)/_components/password-input";
+import { LoadingButton } from "@/components/ui/loading-button";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Card,
   CardContent,
@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { passwordSchema } from "@/lib/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";

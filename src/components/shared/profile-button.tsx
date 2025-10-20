@@ -9,10 +9,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
-import UserAvatar from "./UserAvatar";
+import UserAvatar from "./user-avatar";
 
 export default function NavbarProfileButton({ session }: { session: any }) {
   const router = useRouter();
@@ -52,6 +52,9 @@ export default function NavbarProfileButton({ session }: { session: any }) {
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link href="/account">Profile</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/boards">Boards</Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/organizations">Organizations</Link>

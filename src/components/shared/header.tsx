@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import logo from "#/public/globe.svg";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { Button } from "@/components/ui/button";
 import NavbarProfileButton from "./profile-button";
 import { Skeleton } from "@/components/ui/skeleton";

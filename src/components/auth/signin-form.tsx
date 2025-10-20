@@ -1,9 +1,9 @@
 "use client";
 
-import { GitHubIcon } from "@/components/icons/GitHubIcon";
-import { GoogleIcon } from "@/components/icons/GoogleIcon";
-import { LoadingButton } from "@/app/(auth)/_components/loading-button";
-import { PasswordInput } from "@/app/(auth)/_components/password-input";
+import { GitHubIcon } from "@/components/icons/github-icon";
+import { GoogleIcon } from "@/components/icons/google-icon";
+import { LoadingButton } from "@/components/ui/loading-button";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,14 +23,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth";
 
 const signInSchema = z.object({
   email: z.email({ message: "Please enter a valid email" }),
@@ -140,7 +140,7 @@ export function SignInForm() {
                   </div>
                   <FormControl>
                     <PasswordInput
-                      type="password"
+                      autoComplete="current-password"
                       placeholder="Password"
                       {...field}
                     />
