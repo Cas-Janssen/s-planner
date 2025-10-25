@@ -26,11 +26,11 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { auth } from "@/lib/auth/auth";
+import { toast } from "sonner";
 
 const signInSchema = z.object({
   email: z.email({ message: "Please enter a valid email" }),
@@ -44,10 +44,6 @@ export function SignInForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const searchParams = useSearchParams();
-
-  const redirect = searchParams.get("redirect");
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
@@ -73,8 +69,8 @@ export function SignInForm() {
     if (error) {
       setError(error.message || "Something went wrong");
     } else {
-      console.log("login successful");
-      router.push(redirect ?? "/account");
+      toast.success("Successfully signed in.");
+      router.push("/account");
     }
   }
 
@@ -84,7 +80,7 @@ export function SignInForm() {
 
     const { error } = await authClient.signIn.social({
       provider,
-      callbackURL: redirect ?? "/account",
+      callbackURL: "/dashboard",
     });
 
     setLoading(false);
