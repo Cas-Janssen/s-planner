@@ -84,6 +84,7 @@ model Column {
   title       String
   position    Float
   isCollapsed Boolean @default(false)
+  color       String  @default("gray")
 
   activities Activity[]
   tasks      Task[]
@@ -98,9 +99,10 @@ model Column {
 }
 
 model Task {
-  id       String @id @default(auto()) @map("_id") @db.ObjectId
-  title    String
-  position Float
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  position    Float
+  isCompleted Boolean @default(false)
 
   description String?
   dueDate     DateTime?

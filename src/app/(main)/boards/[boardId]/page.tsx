@@ -1,7 +1,7 @@
-import prisma from "@/lib/prisma";
-import BoardContainer from "@/components/board";
-import { notFound } from "next/navigation";
-import { BoardWithDetails } from "#/prisma/prismaTypes";
+import BoardContainer from "@/app/(main)/boards/_components/board-container";
+import { getServerSession } from "@/lib/auth/get-session";
+import { getBoardWithAccessCheck } from "@/lib/auth/permissions";
+import { redirect } from "next/navigation";
 
 interface BoardIdPageProps {
   readonly params: Promise<{
@@ -10,30 +10,15 @@ interface BoardIdPageProps {
 }
 
 export default async function BoardDetailPage({ params }: BoardIdPageProps) {
-  const { boardId } = await params;
+  const session = await getServerSession();
 
-  let board: BoardWithDetails | null = null;
-  try {
-    board = await prisma.board.findUnique({
-      where: { id: boardId },
-      include: {
-        columns: {
-          include: { tasks: true },
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching board:", error);
-    board = null;
-  }
-
-  if (!board) {
-    notFound();
-  }
-
-  return (
-    <div>
-      <BoardContainer data={board} />
-    </div>
+  const board = await getBoardWithAccessCheck(
+    (await params).boardId,
+    session?.user.id
   );
+  if (!board) {
+    redirect("/sign-in");
+  }
+
+  return <BoardContainer data={board} />;
 }
