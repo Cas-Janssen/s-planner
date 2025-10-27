@@ -1,5 +1,6 @@
 import "@/app/globals.css";
 import Navbar from "@/components/shared/navbar";
+import { ThemeProvider } from "@/components/shared/theme-provider";
 import { Toaster } from "sonner";
 
 export default function RootLayout({
@@ -8,11 +9,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-gradient-to-b from-purple-300 to-purple-500 text-white min-h-screen">
-        <Navbar />
-        <main>{children}</main>
-        <Toaster />
+    <html lang="en" suppressHydrationWarning>
+      <head />
+      <body className="flex min-h-screen flex-col">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Navbar />
+          <main className="flex flex-grow flex-col">{children}</main>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

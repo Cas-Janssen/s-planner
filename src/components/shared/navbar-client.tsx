@@ -16,6 +16,7 @@ import { Button } from "../ui/button";
 import UserAvatar from "./user-avatar";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ModeToggle } from "./mode-toggle";
 
 export function NavbarClient() {
   const { data: session, isPending } = authClient.useSession();
@@ -43,9 +44,9 @@ export function NavbarClient() {
       </div>
     );
   }
-
   return (
     <div className="flex items-center gap-3">
+      <ModeToggle />
       {session?.user ? (
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -54,7 +55,7 @@ export function NavbarClient() {
           >
             <Button
               variant="default"
-              className="p-0 bg-transparent hover:bg-transparent"
+              className="bg-transparent p-0 hover:bg-transparent"
             >
               {session.user && (
                 <UserAvatar
@@ -68,7 +69,7 @@ export function NavbarClient() {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/account">Profile</Link>
+                <Link href="/dashboard">Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/boards">Boards</Link>
