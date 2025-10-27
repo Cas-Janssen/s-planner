@@ -8,7 +8,7 @@ export default async function LoginPage() {
     redirect("/dashboard");
   }
   return (
-    <main className="flex min-h-svh items-center justify-center px-4">
+    <main className="flex grow items-center justify-center px-4">
       <SignInForm />
     </main>
   );
