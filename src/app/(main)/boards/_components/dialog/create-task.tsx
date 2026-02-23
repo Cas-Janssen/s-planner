@@ -113,7 +113,7 @@ export function AddTaskDialog({
       if (saved) {
         const draft: TaskDraft = JSON.parse(saved);
         const minutesAgo = Math.floor(
-          (Date.now() - draft.timestamp) / (1000 * 60)
+          (Date.now() - draft.timestamp) / (1000 * 60),
         );
 
         if (minutesAgo < 1) return "just now";
@@ -136,7 +136,7 @@ export function AddTaskDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-full">
+        <Button variant="outline" size="sm" className="w-full">
           <PlusIcon />
           Add New Task
         </Button>
@@ -148,7 +148,7 @@ export function AddTaskDialog({
             <DialogDescription>
               Create a new task in this column
               {draftAge && (
-                <span className="text-xs text-muted-foreground block mt-1">
+                <span className="text-muted-foreground mt-1 block text-xs">
                   Draft saved {draftAge}
                 </span>
               )}

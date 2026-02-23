@@ -1,6 +1,6 @@
 import { ColumnWithTasks } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { ChevronsLeftRight } from "lucide-react";
+import { ChevronsLeftRight, GripVertical } from "lucide-react";
 
 export default function CollapsedColumn({
   column,
@@ -14,7 +14,7 @@ export default function CollapsedColumn({
   return (
     <div className="w-8r relative m-2 h-full min-h-0 overflow-hidden rounded-lg bg-black">
       <div
-        className="m-1 mt-2 flex flex-row items-center gap-2 text-center text-slate-200 select-none"
+        className="m-1 mt-1 flex flex-row items-center gap-2 text-center text-slate-200 select-none"
         style={{ writingMode: "vertical-rl" }}
       >
         <span
@@ -35,10 +35,14 @@ export default function CollapsedColumn({
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggle}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
           disabled={disabled}
           aria-label="Expand column"
           className="inline-flex"
+          data-no-dnd
         >
           <ChevronsLeftRight className="h-4 w-4 text-gray-400" />
         </Button>

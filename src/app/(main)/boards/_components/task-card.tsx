@@ -1,25 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import React, { useEffect, useRef, useState, useTransition } from "react";
 import { Task } from "@/types/database";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, Pencil } from "lucide-react";
 import { completeTask, updateTask } from "@/lib/actions/task-actions";
 import { toast } from "sonner";
 
-export default function DraggableTask({
+export default function TaskCard({
   task,
   boardId,
 }: {
@@ -36,7 +26,6 @@ export default function DraggableTask({
   );
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [desc, setDesc] = useState<string>((task as Task).description ?? "");
 
   const getCompletedFromTask = (t: any) =>
     typeof t?.isCompleted !== "undefined"
@@ -52,14 +41,8 @@ export default function DraggableTask({
 
   useEffect(() => {
     setTitle(task.title);
-    setDesc((task as any).description ?? "");
     setDone(getCompletedFromTask(task));
-  }, [
-    task.title,
-    (task as any).description,
-    (task as any).completed,
-    (task as any).isCompleted,
-  ]);
+  }, [task.title, task.isCompleted]);
 
   useEffect(() => {
     if (isEditingTitle && titleTextareaRef.current) {
@@ -180,7 +163,7 @@ export default function DraggableTask({
           >
             <span
               className={[
-                "block w-full min-w-0 overflow-hidden text-sm font-medium text-wrap [overflow-wrap:anywhere]",
+                "block w-full min-w-0 overflow-hidden text-sm font-medium text-wrap wrap-anywhere",
                 done ? "text-muted-foreground line-through" : "",
               ].join(" ")}
             >
@@ -209,7 +192,7 @@ export default function DraggableTask({
               }
             }}
             rows={1}
-            className="w-full min-w-0 resize-none overflow-hidden bg-transparent p-0 text-sm font-medium text-wrap [overflow-wrap:anywhere] focus-visible:ring-0"
+            className="w-full min-w-0 resize-none overflow-hidden bg-transparent p-0 text-sm font-medium text-wrap wrap-anywhere focus-visible:ring-0"
             aria-label="Task title input"
           />
         )}
