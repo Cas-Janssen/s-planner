@@ -4,12 +4,15 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireBoardPermission } from "@/lib/auth/permissions";
-import { BoardRole } from "@prisma/client";
+import { ActivityType, BoardRole } from "@prisma/client";
 import { getServerSession } from "../auth/get-session";
+import { logBoardActivity } from "@/lib/log-activity";
 
 const createTaskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
   description: z.string().optional(),
+  dueDate: z.string().optional(),
+  memberIds: z.array(z.string()).optional(),
   columnId: z.string(),
   boardId: z.string(),
 });
@@ -21,6 +24,8 @@ export async function createTask(formData: FormData) {
   const validated = createTaskSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
+    dueDate: formData.get("dueDate") || undefined,
+    memberIds: formData.getAll("memberIds").map(String),
     columnId: formData.get("columnId"),
     boardId: formData.get("boardId"),
   });
@@ -29,10 +34,11 @@ export async function createTask(formData: FormData) {
     return { error: "Invalid input" };
   }
 
-  const { title, description, columnId, boardId } = validated.data;
+  const { title, description, columnId, boardId, dueDate, memberIds } =
+    validated.data;
 
   try {
-    await requireBoardPermission(boardId, session.user.id, BoardRole.EDITOR);
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
 
     const maxPosition = await prisma.task.findFirst({
       where: { columnId },
@@ -40,14 +46,24 @@ export async function createTask(formData: FormData) {
       select: { position: true },
     });
 
-    await prisma.task.create({
+    const task = await prisma.task.create({
       data: {
         title,
         description: description || null,
+        dueDate: dueDate ? new Date(dueDate) : null,
         columnId,
         position: (maxPosition?.position ?? -1) + 1,
+        memberIds: memberIds || [],
       },
     });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.CREATED_TASK,
+      `created task "${title}"`,
+      { taskId: task.id, columnId },
+    );
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
@@ -67,12 +83,27 @@ export async function completeTask(
   const session = await getServerSession();
   if (!session?.user) return { error: "Unauthorized" };
   try {
-    await requireBoardPermission(boardId, session.user.id, BoardRole.EDITOR);
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
+
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { title: true },
+    });
 
     await prisma.task.update({
       where: { id: taskId },
       data: { isCompleted: completed },
     });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.UPDATED_TASK,
+      completed
+        ? `marked task "${task?.title || "Untitled"}" as done`
+        : `reopened task "${task?.title || "Untitled"}"`,
+      { taskId },
+    );
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
@@ -87,18 +118,78 @@ export async function completeTask(
 export async function updateTask(
   taskId: string,
   boardId: string,
-  data: { title?: string; description?: string | null },
+  data: {
+    title?: string;
+    description?: string | null;
+    dueDate?: string | null;
+    memberIds?: string[];
+  },
 ) {
   const session = await getServerSession();
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    await requireBoardPermission(boardId, session.user.id, BoardRole.EDITOR);
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
+
+    const taskBefore = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { title: true, dueDate: true, memberIds: true },
+    });
+
+    const updateData: {
+      title?: string;
+      description?: string | null;
+      dueDate?: Date | null;
+      memberIds?: string[];
+    } = {
+      title: data.title,
+      description: data.description,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(data, "dueDate")) {
+      updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "memberIds")) {
+      updateData.memberIds = data.memberIds || [];
+    }
 
     await prisma.task.update({
       where: { id: taskId },
-      data,
+      data: updateData,
     });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.UPDATED_TASK,
+      `updated task "${data.title || taskBefore?.title || "Untitled"}"`,
+      { taskId },
+    );
+
+    if (
+      Object.prototype.hasOwnProperty.call(data, "dueDate") &&
+      (taskBefore?.dueDate?.toISOString() || null) !==
+        (updateData.dueDate?.toISOString() || null)
+    ) {
+      await logBoardActivity(
+        boardId,
+        session.user.id,
+        ActivityType.UPDATED_DEADLINE,
+        "updated a task deadline",
+        { taskId },
+      );
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "memberIds")) {
+      await logBoardActivity(
+        boardId,
+        session.user.id,
+        ActivityType.UPDATED_ASSIGNEES,
+        "updated task assignees",
+        { taskId },
+      );
+    }
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
@@ -115,7 +206,20 @@ export async function deleteTask(taskId: string, boardId: string) {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    await requireBoardPermission(boardId, session.user.id, BoardRole.EDITOR);
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
+
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { title: true },
+    });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.DELETED_TASK,
+      `deleted task "${task?.title || "Untitled"}"`,
+      { taskId },
+    );
 
     await prisma.task.delete({
       where: { id: taskId },
@@ -136,12 +240,18 @@ export async function moveTask(
   taskId: string,
   targetColumnId: string,
   newOrder: number,
+  sourceColumnId?: string,
 ) {
   const session = await getServerSession();
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    await requireBoardPermission(boardId, session.user.id, BoardRole.EDITOR);
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
+
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { title: true, columnId: true },
+    });
 
     await prisma.task.update({
       where: { id: taskId },
@@ -150,6 +260,22 @@ export async function moveTask(
         position: newOrder,
       },
     });
+
+    if (task?.columnId !== targetColumnId || sourceColumnId) {
+      await logBoardActivity(
+        boardId,
+        session.user.id,
+        ActivityType.MOVED_TASK,
+        `moved task "${task?.title || "Untitled"}"`,
+        {
+          taskId,
+          metadata: {
+            fromColumnId: sourceColumnId || task?.columnId,
+            toColumnId: targetColumnId,
+          },
+        },
+      );
+    }
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };

@@ -4,9 +4,10 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireBoardPermission } from "@/lib/auth/permissions";
-import { BoardRole, BoardType } from "@prisma/client";
+import { ActivityType, BoardRole, BoardType } from "@prisma/client";
 import { getServerSession } from "../auth/get-session";
 import { computeInitialPosition } from "@/lib/helpers/position-calculator";
+import { logBoardActivity } from "@/lib/log-activity";
 
 const createBoardSchema = z.object({
   title: z.string().min(1).max(100),
@@ -70,7 +71,7 @@ export async function createBoard(formData: FormData) {
         members: {
           create: {
             userId: session.user.id,
-            role: BoardRole.OWNER,
+            role: BoardRole.MANAGER,
           },
         },
         User: {
@@ -78,6 +79,13 @@ export async function createBoard(formData: FormData) {
         },
       },
     });
+
+    await logBoardActivity(
+      board.id,
+      session.user.id,
+      ActivityType.CREATED_BOARD,
+      `created board "${title}"`,
+    );
 
     revalidatePath("/boards");
     return { success: true, boardId: board.id };
@@ -91,7 +99,14 @@ export async function deleteBoard(boardId: string) {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    await requireBoardPermission(boardId, session.user.id, BoardRole.OWNER);
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MANAGER);
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.DELETED_BOARD,
+      "deleted the board",
+    );
 
     await prisma.board.delete({
       where: { id: boardId },
@@ -112,18 +127,25 @@ export async function deleteBoard(boardId: string) {
 
 export async function updateBoard(
   boardId: string,
-  data: { title?: string; type?: BoardType }
+  data: { title?: string; type?: BoardType },
 ) {
   const session = await getServerSession();
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    await requireBoardPermission(boardId, session.user.id, BoardRole.OWNER);
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MANAGER);
 
     await prisma.board.update({
       where: { id: boardId },
       data,
     });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.UPDATED_BOARD,
+      "updated board settings",
+    );
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
@@ -135,5 +157,75 @@ export async function updateBoard(
       return { error: "You don't have permission to edit this board" };
     }
     return { error: "Failed to update board" };
+  }
+}
+
+const inviteMemberSchema = z.object({
+  boardId: z.string(),
+  email: z.string().email(),
+  role: z.enum(BoardRole).default(BoardRole.MEMBER),
+});
+
+export async function inviteBoardMember(formData: FormData) {
+  const session = await getServerSession();
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const validated = inviteMemberSchema.safeParse({
+    boardId: formData.get("boardId"),
+    email: formData.get("email"),
+    role: formData.get("role") || BoardRole.MEMBER,
+  });
+
+  if (!validated.success) {
+    return { error: "Invalid invite details" };
+  }
+
+  const { boardId, email, role } = validated.data;
+
+  try {
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MANAGER);
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true },
+    });
+
+    if (!user) {
+      return { error: "No user found with that email" };
+    }
+
+    await prisma.boardMember.upsert({
+      where: {
+        boardId_userId: {
+          boardId,
+          userId: user.id,
+        },
+      },
+      update: { role },
+      create: {
+        boardId,
+        userId: user.id,
+        role,
+      },
+    });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.INVITED_MEMBER,
+      `invited ${user.name || email} as ${role.toLowerCase()}`,
+    );
+
+    revalidatePath(`/boards/${boardId}`);
+    return { success: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "Insufficient permissions"
+    ) {
+      return { error: "You don't have permission to invite members" };
+    }
+
+    return { error: "Failed to invite member" };
   }
 }

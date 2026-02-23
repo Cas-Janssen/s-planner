@@ -5,7 +5,12 @@ export async function logBoardActivity(
   boardId: string,
   userId: string,
   type: ActivityType,
-  message: string
+  message: string,
+  options?: {
+    columnId?: string | null;
+    taskId?: string | null;
+    metadata?: Record<string, unknown> | null;
+  },
 ) {
   return prisma.activity.create({
     data: {
@@ -13,6 +18,9 @@ export async function logBoardActivity(
       userId,
       type,
       message,
+      columnId: options?.columnId ?? null,
+      taskId: options?.taskId ?? null,
+      metadata: (options?.metadata as any) ?? null,
     },
   });
 }
@@ -20,5 +28,13 @@ export async function logBoardActivity(
 export async function logUserActivity(
   userId: string,
   type: ActivityType,
-  message: string
-) {}
+  message: string,
+) {
+  return prisma.activity.create({
+    data: {
+      userId,
+      type,
+      message,
+    },
+  });
+}

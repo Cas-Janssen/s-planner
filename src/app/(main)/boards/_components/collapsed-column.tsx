@@ -1,15 +1,17 @@
 import { ColumnWithTasks } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { ChevronsLeftRight, GripVertical } from "lucide-react";
+import { ChevronsLeftRight } from "lucide-react";
 
 export default function CollapsedColumn({
   column,
   onToggle,
   disabled,
+  canEdit,
 }: {
   column: ColumnWithTasks;
   onToggle: () => void;
   disabled?: boolean;
+  canEdit: boolean;
 }) {
   return (
     <div className="w-8r relative m-2 h-full min-h-0 overflow-hidden rounded-lg bg-black">
@@ -32,20 +34,22 @@ export default function CollapsedColumn({
         <span className="inline-block rounded-full bg-purple-600 px-2 py-1 text-xs font-semibold text-white">
           {column.tasks.length}
         </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          disabled={disabled}
-          aria-label="Expand column"
-          className="inline-flex"
-          data-no-dnd
-        >
-          <ChevronsLeftRight className="h-4 w-4 text-gray-400" />
-        </Button>
+        {canEdit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            disabled={disabled}
+            aria-label="Expand column"
+            className="inline-flex"
+            data-no-dnd
+          >
+            <ChevronsLeftRight className="h-4 w-4 text-gray-400" />
+          </Button>
+        )}
       </div>
     </div>
   );

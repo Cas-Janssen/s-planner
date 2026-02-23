@@ -17,6 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
+import { BoardMemberWithUser } from "@/types/database";
 
 interface TaskDraft {
   title: string;
@@ -27,15 +28,19 @@ interface TaskDraft {
 export function AddTaskDialog({
   columnId,
   boardId,
+  members,
 }: {
   columnId: string;
   boardId: string;
+  members: BoardMemberWithUser[];
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [memberIds, setMemberIds] = useState<string[]>([]);
 
   const storageKey = `task-draft-${columnId}`;
 
@@ -79,6 +84,8 @@ export function AddTaskDialog({
     formData.append("boardId", boardId);
     formData.append("title", title);
     if (description) formData.append("description", description);
+    if (dueDate) formData.append("dueDate", dueDate);
+    memberIds.forEach((memberId) => formData.append("memberIds", memberId));
 
     const result = await createTask(formData);
 
@@ -91,6 +98,8 @@ export function AddTaskDialog({
       setOpen(false);
       setTitle("");
       setDescription("");
+      setDueDate("");
+      setMemberIds([]);
       setError(null);
       setLoading(false);
     }
@@ -104,6 +113,8 @@ export function AddTaskDialog({
     localStorage.removeItem(storageKey);
     setTitle("");
     setDescription("");
+    setDueDate("");
+    setMemberIds([]);
     setError(null);
   }
 
@@ -180,6 +191,48 @@ export function AddTaskDialog({
                 rows={4}
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="dueDate">Due date</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            {members.length > 0 && (
+              <div className="grid gap-2">
+                <Label>Assignees</Label>
+                <div className="grid gap-2">
+                  {members.map((member) => (
+                    <label
+                      key={member.id}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        value={member.userId}
+                        checked={memberIds.includes(member.userId)}
+                        onChange={(event) => {
+                          const next = new Set(memberIds);
+                          if (event.target.checked) {
+                            next.add(member.userId);
+                          } else {
+                            next.delete(member.userId);
+                          }
+                          setMemberIds(Array.from(next));
+                        }}
+                        disabled={loading}
+                      />
+                      <span>
+                        {member.user?.name || member.user?.email || "Member"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
           <DialogFooter className="gap-2">

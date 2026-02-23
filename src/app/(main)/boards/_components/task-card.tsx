@@ -1,47 +1,37 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useTransition } from "react";
-import { Task } from "@/types/database";
+import { BoardMemberWithUser, TaskWithMembers } from "@/types/database";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Pencil } from "lucide-react";
+import { Calendar, Check, Pencil, Users } from "lucide-react";
 import { completeTask, updateTask } from "@/lib/actions/task-actions";
 import { toast } from "sonner";
+import { EditTaskDialog } from "./dialog/edit-task";
+import UserAvatar from "@/components/shared/user-avatar";
 
 export default function TaskCard({
   task,
   boardId,
+  canEdit,
+  members,
 }: {
-  task: Task;
+  task: TaskWithMembers;
   boardId: string;
+  canEdit: boolean;
+  members: BoardMemberWithUser[];
 }) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [isPending, startTransition] = useTransition();
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [done, setDone] = useState<boolean>(
-    Boolean((task as Task).isCompleted),
-  );
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const getCompletedFromTask = (t: any) =>
-    typeof t?.isCompleted !== "undefined"
-      ? Boolean(t.isCompleted)
-      : Boolean(t?.completed);
-
-  const completionPatch = (completed: boolean) =>
-    ({
-      [typeof (task as any).isCompleted !== "undefined"
-        ? "isCompleted"
-        : "completed"]: completed,
-    }) as any;
+  const [done, setDone] = useState<boolean>(Boolean(task.isCompleted));
 
   useEffect(() => {
     setTitle(task.title);
-    setDone(getCompletedFromTask(task));
+    setDone(Boolean(task.isCompleted));
   }, [task.title, task.isCompleted]);
 
   useEffect(() => {
@@ -69,7 +59,6 @@ export default function TaskCard({
     startTransition(async () => {
       const res = await updateTask(task.id, boardId, {
         title: next,
-        ...completionPatch(done),
       });
       if (res?.error) {
         toast.error(res.error);
@@ -82,6 +71,7 @@ export default function TaskCard({
 
   const toggleCompleted = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canEdit) return;
     const next = !done;
     setDone(next);
     startTransition(async () => {
@@ -93,26 +83,17 @@ export default function TaskCard({
     });
   };
 
-  const openDialog = () => {
-    if (isEditingTitle) return;
-    setDialogOpen(true);
-  };
+  const assignees = task.members || [];
+  const dueLabel = task.dueDate
+    ? new Date(task.dueDate).toLocaleDateString()
+    : null;
 
   return (
     <>
       <Card
-        role="button"
-        tabIndex={0}
-        onClick={openDialog}
-        onKeyDown={(e) => {
-          if (isEditingTitle) return;
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            openDialog();
-          }
-        }}
         className={[
-          "group relative cursor-pointer rounded-md shadow-sm",
+          "group relative rounded-md shadow-sm",
+          canEdit ? "cursor-pointer" : "cursor-default",
           "hover:border-border focus-within:border-border border border-transparent transition-colors",
           "px-3 py-3",
           done ? "pl-8" : "focus-within:pl-8 hover:pl-8",
@@ -123,31 +104,33 @@ export default function TaskCard({
         ].join(" ")}
         aria-pressed={done}
       >
-        <div
-          className={[
-            "absolute top-2 left-2 z-10 transition-opacity duration-150",
-            done
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100",
-          ].join(" ")}
-        >
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={toggleCompleted}
+        {canEdit && (
+          <div
             className={[
-              "h-5 w-5 rounded-full border p-0",
+              "absolute top-2 left-2 z-10 transition-opacity duration-150",
               done
-                ? "border-green-500 bg-green-600/20"
-                : "border-muted-foreground/40 bg-transparent",
+                ? "pointer-events-auto opacity-100"
+                : "pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100",
             ].join(" ")}
-            aria-label={done ? "Mark as incomplete" : "Mark as complete"}
-            title={done ? "Mark as incomplete" : "Mark as complete"}
           >
-            {done && <Check className="h-3 w-3 text-green-500" />}
-          </Button>
-        </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleCompleted}
+              className={[
+                "h-5 w-5 rounded-full border p-0",
+                done
+                  ? "border-green-500 bg-green-600/20"
+                  : "border-muted-foreground/40 bg-transparent",
+              ].join(" ")}
+              aria-label={done ? "Mark as incomplete" : "Mark as complete"}
+              title={done ? "Mark as incomplete" : "Mark as complete"}
+            >
+              {done && <Check className="h-3 w-3 text-green-500" />}
+            </Button>
+          </div>
+        )}
 
         {!isEditingTitle ? (
           <Button
@@ -155,11 +138,12 @@ export default function TaskCard({
             variant="noStyles"
             onClick={(e) => {
               e.stopPropagation();
-              setIsEditingTitle(true);
+              if (canEdit) setIsEditingTitle(true);
             }}
             className="h-auto w-full min-w-0 justify-start border-0 p-0 text-left"
-            title="Click to edit title"
+            title={canEdit ? "Click to edit title" : "Task title"}
             aria-label="Edit task title"
+            disabled={!canEdit}
           >
             <span
               className={[
@@ -197,22 +181,48 @@ export default function TaskCard({
           />
         )}
 
-        {!isEditingTitle && (
+        {!isEditingTitle && canEdit && (
           <div className="pointer-events-none absolute top-2 right-2 z-20 opacity-0 transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 p-0"
-              aria-label="Inline edit title"
-              title="Inline edit title"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditingTitle(true);
-              }}
-            >
-              <Pencil className="text-muted-foreground h-4 w-4" />
-            </Button>
+            <EditTaskDialog
+              task={task}
+              boardId={boardId}
+              members={members}
+              triggerLabel=""
+            />
+          </div>
+        )}
+
+        {(dueLabel || assignees.length > 0) && (
+          <div className="text-muted-foreground mt-2 flex items-center justify-between gap-2 text-xs">
+            {dueLabel && (
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {dueLabel}
+              </span>
+            )}
+            {assignees.length > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {assignees.length}
+              </span>
+            )}
+          </div>
+        )}
+
+        {assignees.length > 0 && (
+          <div className="mt-2 flex -space-x-2">
+            {assignees.map((assignee) => (
+              <div
+                key={assignee.id}
+                className="border-background rounded-full border-2"
+                title={assignee.name || assignee.email || "Assignee"}
+              >
+                <UserAvatar
+                  name={assignee.name || assignee.email || "Assignee"}
+                  imageURL={assignee.image || null}
+                />
+              </div>
+            ))}
           </div>
         )}
       </Card>

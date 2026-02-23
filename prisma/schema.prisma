@@ -11,19 +11,22 @@ enum ActivityType {
   CREATED_BOARD
   UPDATED_BOARD
   DELETED_BOARD
+  INVITED_MEMBER
   CREATED_COLUMN
   UPDATED_COLUMN
   DELETED_COLUMN
+  MOVED_COLUMN
   CREATED_TASK
   UPDATED_TASK
   DELETED_TASK
   MOVED_TASK
+  UPDATED_DEADLINE
+  UPDATED_ASSIGNEES
 }
 
 enum BoardRole {
-  OWNER
-  ADMIN
-  EDITOR
+  MANAGER
+  MEMBER
   VIEWER
 }
 
@@ -59,9 +62,9 @@ model Activity {
 
   board    Board?  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   boardId  String? @db.ObjectId
-  column   Column? @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  column   Column? @relation(fields: [columnId], references: [id], onDelete: SetNull)
   columnId String? @db.ObjectId
-  task     Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task     Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
   taskId   String? @db.ObjectId
 
   createdAt DateTime @default(now())

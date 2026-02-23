@@ -17,12 +17,11 @@ export async function getUserBoardPermission(boardId: string, userId: string) {
 
 function checkRoleHierarchy(
   userRole: BoardRole,
-  requiredRole: BoardRole
+  requiredRole: BoardRole,
 ): boolean {
   const roleHierarchy = {
-    [BoardRole.OWNER]: 4,
-    [BoardRole.ADMIN]: 3,
-    [BoardRole.EDITOR]: 2,
+    [BoardRole.MANAGER]: 3,
+    [BoardRole.MEMBER]: 2,
     [BoardRole.VIEWER]: 1,
   };
 
@@ -32,7 +31,7 @@ function checkRoleHierarchy(
 async function canUserAccessBoard(
   boardId: string,
   userId: string | undefined,
-  requiredRole?: BoardRole
+  requiredRole?: BoardRole,
 ): Promise<boolean> {
   const board = await prisma.board.findUnique({
     where: { id: boardId },
@@ -68,37 +67,37 @@ async function canUserAccessBoard(
 
 export async function canUserViewBoard(
   boardId: string,
-  userId: string | undefined
+  userId: string | undefined,
 ): Promise<boolean> {
   return canUserAccessBoard(boardId, userId, BoardRole.VIEWER);
 }
 
 export async function canUserEditBoard(
   boardId: string,
-  userId: string
+  userId: string,
 ): Promise<boolean> {
-  return canUserAccessBoard(boardId, userId, BoardRole.EDITOR);
+  return canUserAccessBoard(boardId, userId, BoardRole.MEMBER);
 }
 
 export async function canUserManageBoard(
   boardId: string,
-  userId: string
+  userId: string,
 ): Promise<boolean> {
-  return canUserAccessBoard(boardId, userId, BoardRole.ADMIN);
+  return canUserAccessBoard(boardId, userId, BoardRole.MANAGER);
 }
 
 export async function isUserBoardOwner(
   boardId: string,
-  userId: string
+  userId: string,
 ): Promise<boolean> {
   const permission = await getUserBoardPermission(boardId, userId);
-  return permission?.role === BoardRole.OWNER;
+  return permission?.role === BoardRole.MANAGER;
 }
 
 export async function requireBoardPermission(
   boardId: string,
   userId: string,
-  requiredRole: BoardRole = BoardRole.VIEWER
+  requiredRole: BoardRole = BoardRole.VIEWER,
 ): Promise<void> {
   const hasPermission = await canUserAccessBoard(boardId, userId, requiredRole);
 
@@ -177,7 +176,7 @@ export async function getUserBoards(userId: string | null) {
 export async function getBoardWithAccessCheck(
   boardId: string,
   userId: string | undefined,
-  requiredRole?: BoardRole
+  requiredRole?: BoardRole,
 ) {
   const hasAccess = await canUserAccessBoard(boardId, userId, requiredRole);
 
@@ -191,10 +190,25 @@ export async function getBoardWithAccessCheck(
       columns: {
         include: {
           tasks: {
+            include: {
+              members: true,
+            },
             orderBy: { position: "asc" },
           },
         },
         orderBy: { position: "asc" },
+      },
+      members: {
+        include: {
+          user: true,
+        },
+      },
+      activities: {
+        include: {
+          user: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
       },
     },
   });
