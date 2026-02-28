@@ -3,17 +3,15 @@ import { Button } from "@/components/ui/button";
 
 export default function NotFoundPage() {
   return (
-    <div className="from-background via-background to-muted/20 flex min-h-screen items-center justify-center bg-gradient-to-br px-4">
+    <div className="from-background via-background to-muted/20 flex min-h-screen items-center justify-center bg-linear-to-br px-4">
       <div className="max-w-md space-y-8 text-center">
-        {/* Animated 404 */}
         <div className="space-y-2">
-          <h1 className="from-primary to-primary/60 animate-pulse bg-gradient-to-r bg-clip-text text-8xl font-bold text-transparent">
+          <h1 className="from-primary to-primary/60 animate-pulse bg-linear-to-r bg-clip-text text-8xl font-bold text-transparent">
             404
           </h1>
-          <div className="from-primary to-primary/40 mx-auto h-1 w-20 rounded-full bg-gradient-to-r"></div>
+          <div className="from-primary to-primary/40 mx-auto h-1 w-20 rounded-full bg-linear-to-r"></div>
         </div>
 
-        {/* Message */}
         <div className="space-y-3">
           <h2 className="text-3xl font-bold">Page Not Found</h2>
           <p className="text-muted-foreground text-lg">
@@ -22,7 +20,6 @@ export default function NotFoundPage() {
           </p>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button asChild size="lg">
             <Link href="/">Go Home</Link>
@@ -32,10 +29,9 @@ export default function NotFoundPage() {
           </Button>
         </div>
 
-        {/* Decorative element */}
         <div className="pt-8">
           <div className="bg-muted/30 border-border/50 relative h-24 overflow-hidden rounded-lg border">
-            <div className="via-primary/10 animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent to-transparent"></div>
+            <div className="via-primary/10 animate-shimmer absolute inset-0 bg-linear-to-r from-transparent to-transparent"></div>
           </div>
         </div>
       </div>
