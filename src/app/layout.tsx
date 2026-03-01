@@ -1,6 +1,7 @@
 import "@/app/globals.css";
 import Navbar from "@/components/shared/navbar";
 import { ThemeProvider } from "@/components/shared/theme-provider";
+import { SocketProvider } from "@/lib/socket/socket-provider";
 import { Toaster } from "sonner";
 
 export default function RootLayout({
@@ -18,9 +19,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          <main className="flex flex-grow flex-col">{children}</main>
-          <Toaster />
+          <SocketProvider>
+            <Navbar />
+            <main className="flex grow flex-col">{children}</main>
+            <Toaster />
+          </SocketProvider>
         </ThemeProvider>
       </body>
     </html>
