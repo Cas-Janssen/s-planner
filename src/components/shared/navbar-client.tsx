@@ -74,12 +74,6 @@ export function NavbarClient() {
               <DropdownMenuItem asChild>
                 <Link href="/boards">Boards</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/organizations">Organizations</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings">Settings</Link>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>

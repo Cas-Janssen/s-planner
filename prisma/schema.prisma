@@ -12,6 +12,8 @@ enum ActivityType {
   UPDATED_BOARD
   DELETED_BOARD
   INVITED_MEMBER
+  UPDATED_MEMBER_ROLE
+  REMOVED_MEMBER
   CREATED_COLUMN
   UPDATED_COLUMN
   DELETED_COLUMN
@@ -43,6 +45,7 @@ model Board {
   columns    Column[]
   activities Activity[]
   members    BoardMember[]
+  invites    BoardInvite[]
 
   User        User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
   createdById String
@@ -80,6 +83,30 @@ model BoardMember {
   userId  String
 
   @@unique([boardId, userId])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model BoardInvite {
+  id     String       @id @default(auto()) @map("_id") @db.ObjectId
+  role   BoardRole    @default(MEMBER)
+  status InviteStatus @default(PENDING)
+
+  board         Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId       String @db.ObjectId
+  invitedUser   User   @relation("invitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedUserId String
+  invitedBy     User   @relation("invitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedById   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, invitedUserId])
 }
 
 model Column {
@@ -131,11 +158,13 @@ model User {
 
   image String?
 
-  sessions      Session[]
-  accounts      Account[]
-  activities    Activity[]
-  boards        BoardMember[]
-  createdBoards Board[]
+  sessions        Session[]
+  accounts        Account[]
+  activities      Activity[]
+  boards          BoardMember[]
+  createdBoards   Board[]
+  receivedInvites BoardInvite[] @relation("invitedUser")
+  sentInvites     BoardInvite[] @relation("invitedBy")
 
   tasks   Task[]   @relation(fields: [taskIds], references: [id])
   taskIds String[] @db.ObjectId

@@ -70,7 +70,7 @@ export function SignInForm() {
       setError(error.message || "Something went wrong");
     } else {
       toast.success("Successfully signed in.");
-      router.push("/account");
+      router.push("/dashboard");
     }
   }
 
