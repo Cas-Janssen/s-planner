@@ -1,9 +1,6 @@
 import { getServerSession } from "@/lib/auth/get-session";
 import prisma from "@/lib/prisma";
-import {
-  canUserManageBoard,
-  getUserBoardPermission,
-} from "@/lib/auth/permissions";
+import { canUserManageBoard } from "@/lib/auth/permissions";
 import { ActivityType, BoardRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { logBoardActivity } from "@/lib/log-activity";
@@ -84,7 +81,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 
   const { boardId, memberId } = await params;
-  const body = await req.json();
+
+  let body;
+  try {
+    body = await req.json();
+  } catch (error) {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const { role } = body;
 
   if (!role || !Object.values(BoardRole).includes(role)) {

@@ -26,8 +26,11 @@ async function main() {
       path: "/api/socketio",
       addTrailingSlash: false,
       cors: {
-        origin: dev ? "*" : undefined,
+        origin: dev
+          ? [`http://${hostname}:${port}`, "http://localhost:3000"]
+          : undefined,
         methods: ["GET", "POST"],
+        credentials: true,
       },
     },
   );
