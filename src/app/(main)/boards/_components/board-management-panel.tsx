@@ -20,7 +20,7 @@ export default function BoardManagementPanel({
   const [activeTab, setActiveTab] = useState("activity");
 
   return (
-    <div className="bg-card mt-6 rounded-lg border p-4">
+    <div className="bg-card mt-6 w-full rounded-lg border p-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-xs grid-cols-2">
           <TabsTrigger value="activity" className="gap-2">

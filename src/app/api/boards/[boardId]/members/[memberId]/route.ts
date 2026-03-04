@@ -4,8 +4,10 @@ import {
   canUserManageBoard,
   getUserBoardPermission,
 } from "@/lib/auth/permissions";
-import { BoardRole } from "@prisma/client";
+import { ActivityType, BoardRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { logBoardActivity } from "@/lib/log-activity";
+import { broadcastBoardUpdated } from "@/lib/socket/broadcast";
 
 interface RouteParams {
   params: Promise<{
@@ -31,7 +33,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Prevent removing the only manager
     const managers = await prisma.boardMember.findMany({
       where: { boardId, role: BoardRole.MANAGER },
     });
@@ -51,6 +52,20 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         },
       },
     });
+
+    const removedUser = await prisma.user.findUnique({
+      where: { id: memberId },
+      select: { name: true, email: true },
+    });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.REMOVED_MEMBER,
+      `removed ${removedUser?.name || removedUser?.email || "a member"} from the board`,
+    );
+
+    broadcastBoardUpdated({ boardId, userId: session.user.id });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -85,7 +100,6 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Prevent removing the only manager
     if (role !== BoardRole.MANAGER) {
       const managers = await prisma.boardMember.findMany({
         where: { boardId, role: BoardRole.MANAGER },
@@ -109,9 +123,22 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       data: { role },
     });
 
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: memberId },
+      select: { name: true, email: true },
+    });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.UPDATED_MEMBER_ROLE,
+      `changed ${updatedUser?.name || updatedUser?.email || "a member"}'s role to ${role.toLowerCase()}`,
+    );
+
+    broadcastBoardUpdated({ boardId, userId: session.user.id });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error updating board member role:", error);
+    console.error("Error updating member role:", error);
     return NextResponse.json(
       { error: "Failed to update member role" },
       { status: 500 },

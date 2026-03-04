@@ -4,7 +4,15 @@ import prisma from "@/lib/prisma";
 import { BoardRole, BoardType } from "@prisma/client";
 import { redirect } from "next/navigation";
 
+function isValidObjectId(id: string): boolean {
+  return /^[a-f0-9]{24}$/.test(id);
+}
+
 export async function getUserBoardPermission(boardId: string, userId: string) {
+  if (!isValidObjectId(boardId)) {
+    return null;
+  }
+
   return await prisma.boardMember.findUnique({
     where: {
       boardId_userId: {
@@ -33,6 +41,10 @@ async function canUserAccessBoard(
   userId: string | undefined,
   requiredRole?: BoardRole,
 ): Promise<boolean> {
+  if (!isValidObjectId(boardId)) {
+    return false;
+  }
+
   const board = await prisma.board.findUnique({
     where: { id: boardId },
     select: { type: true },
@@ -116,6 +128,11 @@ export async function getUserBoards(userId: string | null) {
             _count: { select: { tasks: true } },
           },
         },
+        activities: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -123,6 +140,7 @@ export async function getUserBoards(userId: string | null) {
     return publicBoards.map((board) => ({
       ...board,
       role: null as BoardRole | null,
+      lastActivity: board.activities[0]?.createdAt ?? board.updatedAt,
     }));
   }
 
@@ -135,6 +153,11 @@ export async function getUserBoards(userId: string | null) {
             include: {
               _count: { select: { tasks: true } },
             },
+          },
+          activities: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { createdAt: true },
           },
         },
       },
@@ -157,20 +180,34 @@ export async function getUserBoards(userId: string | null) {
           _count: { select: { tasks: true } },
         },
       },
+      activities: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { createdAt: true },
+      },
     },
     orderBy: { updatedAt: "desc" },
   });
 
-  return [
+  const all = [
     ...permissionedBoards.map((p) => ({
       ...p.board,
       role: p.role as BoardRole | null,
+      lastActivity: p.board.activities[0]?.createdAt ?? p.board.updatedAt,
     })),
     ...publicBoards.map((board) => ({
       ...board,
       role: BoardRole.VIEWER as BoardRole | null,
+      lastActivity: board.activities[0]?.createdAt ?? board.updatedAt,
     })),
   ];
+
+  all.sort(
+    (a, b) =>
+      new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
+  );
+
+  return all;
 }
 
 export async function getBoardWithAccessCheck(
@@ -178,13 +215,11 @@ export async function getBoardWithAccessCheck(
   userId: string | undefined,
   requiredRole?: BoardRole,
 ) {
-  const hasAccess = await canUserAccessBoard(boardId, userId, requiredRole);
-
-  if (!hasAccess) {
+  if (!isValidObjectId(boardId)) {
     return null;
   }
 
-  return prisma.board.findUnique({
+  const board = await prisma.board.findUnique({
     where: { id: boardId },
     include: {
       columns: {
@@ -212,4 +247,34 @@ export async function getBoardWithAccessCheck(
       },
     },
   });
+
+  if (!board) {
+    redirect("/not-found");
+  }
+
+  if (board.type === BoardType.PUBLIC) {
+    if (!requiredRole) return board;
+
+    if (!userId) return null;
+
+    const permission = board.members.find((m) => m.userId === userId);
+    if (!permission) return null;
+
+    if (!checkRoleHierarchy(permission.role, requiredRole)) return null;
+    return board;
+  }
+
+  if (board.type === BoardType.PRIVATE) {
+    if (!userId) return null;
+
+    const permission = board.members.find((m) => m.userId === userId);
+    if (!permission) return null;
+
+    if (!requiredRole) return board;
+
+    if (!checkRoleHierarchy(permission.role, requiredRole)) return null;
+    return board;
+  }
+
+  return null;
 }

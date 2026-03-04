@@ -18,6 +18,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 async function removeBoardMember(boardId: string, userId: string) {
   const response = await fetch(`/api/boards/${boardId}/members/${userId}`, {
@@ -57,7 +65,7 @@ export default function MembersPanel({
     setRemoving(null);
 
     if (res?.error) {
-      alert(`Error: ${res.error}`);
+      toast.error(res.error);
       return;
     }
 
@@ -68,7 +76,7 @@ export default function MembersPanel({
     const res = await updateMemberRole(board.id, memberId, newRole);
 
     if (res?.error) {
-      alert(`Error: ${res.error}`);
+      toast.error(res.error);
       return;
     }
 
@@ -114,17 +122,21 @@ export default function MembersPanel({
 
             {canManage ? (
               <div className="ml-2 flex items-center gap-2">
-                <select
+                <Select
                   value={member.role}
-                  onChange={(e) =>
-                    handleRoleChange(member.userId, e.target.value as BoardRole)
+                  onValueChange={(value) =>
+                    handleRoleChange(member.userId, value as BoardRole)
                   }
-                  className="border-input bg-background h-8 rounded-md border px-2 text-xs"
                 >
-                  <option value={BoardRole.MANAGER}>Manager</option>
-                  <option value={BoardRole.MEMBER}>Member</option>
-                  <option value={BoardRole.VIEWER}>Viewer</option>
-                </select>
+                  <SelectTrigger className="h-8 w-[110px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={BoardRole.MANAGER}>Manager</SelectItem>
+                    <SelectItem value={BoardRole.MEMBER}>Member</SelectItem>
+                    <SelectItem value={BoardRole.VIEWER}>Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

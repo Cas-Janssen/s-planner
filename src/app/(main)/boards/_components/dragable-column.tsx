@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import TaskCard from "./task-card";
+import { COLUMN_COLOR_MAP } from "@/lib/constants";
 
 export default function DragableColumn({
   column,
@@ -73,8 +74,12 @@ export default function DragableColumn({
     });
   };
 
+  const columnBg = COLUMN_COLOR_MAP[column.color] || "bg-gray-700";
+
   const columnBody = (
-    <div className="group relative m-2 h-full w-xs overflow-hidden rounded-lg bg-gray-700">
+    <div
+      className={`group relative m-2 w-xs self-start overflow-hidden rounded-lg ${columnBg}`}
+    >
       <div className="grid grid-rows-[auto,1fr,auto]">
         <div className="grid grid-cols-[1fr,auto] items-start gap-2 px-2 py-2">
           <div className="flex min-w-0 items-start gap-2">
@@ -138,7 +143,7 @@ export default function DragableColumn({
             )}
             {canEdit && (
               <div>
-                <EditColumnDialog />
+                <EditColumnDialog column={column} />
               </div>
             )}
           </div>

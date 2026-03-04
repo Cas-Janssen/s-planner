@@ -8,6 +8,11 @@ import { ActivityType, BoardRole, BoardType } from "@prisma/client";
 import { getServerSession } from "../auth/get-session";
 import { computeInitialPosition } from "@/lib/helpers/position-calculator";
 import { logBoardActivity } from "@/lib/log-activity";
+import {
+  broadcastBoardUpdated,
+  broadcastBoardDeleted,
+  broadcastMemberInvited,
+} from "@/lib/socket/broadcast";
 
 const createBoardSchema = z.object({
   title: z.string().min(1).max(100),
@@ -87,6 +92,8 @@ export async function createBoard(formData: FormData) {
       `created board "${title}"`,
     );
 
+    broadcastBoardUpdated({ boardId: board.id, userId: session.user.id });
+
     revalidatePath("/boards");
     return { success: true, boardId: board.id };
   } catch (error) {
@@ -108,6 +115,8 @@ export async function deleteBoard(boardId: string) {
       "deleted the board",
     );
 
+    broadcastBoardDeleted({ boardId, userId: session.user.id });
+
     await prisma.board.delete({
       where: { id: boardId },
     });
@@ -125,6 +134,11 @@ export async function deleteBoard(boardId: string) {
   }
 }
 
+const updateBoardSchema = z.object({
+  title: z.string().min(1).max(100).optional(),
+  type: z.enum(BoardType).optional(),
+});
+
 export async function updateBoard(
   boardId: string,
   data: { title?: string; type?: BoardType },
@@ -132,12 +146,17 @@ export async function updateBoard(
   const session = await getServerSession();
   if (!session?.user) return { error: "Unauthorized" };
 
+  const validated = updateBoardSchema.safeParse(data);
+  if (!validated.success) {
+    return { error: "Title must be between 1 and 100 characters" };
+  }
+
   try {
     await requireBoardPermission(boardId, session.user.id, BoardRole.MANAGER);
 
     await prisma.board.update({
       where: { id: boardId },
-      data,
+      data: validated.data,
     });
 
     await logBoardActivity(
@@ -146,6 +165,8 @@ export async function updateBoard(
       ActivityType.UPDATED_BOARD,
       "updated board settings",
     );
+
+    broadcastBoardUpdated({ boardId, userId: session.user.id });
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
@@ -194,27 +215,64 @@ export async function inviteBoardMember(formData: FormData) {
       return { error: "No user found with that email" };
     }
 
-    await prisma.boardMember.upsert({
+    const existingMember = await prisma.boardMember.findUnique({
+      where: { boardId_userId: { boardId, userId: user.id } },
+    });
+    if (existingMember) {
+      return { error: "User is already a member of this board" };
+    }
+
+    const existingInvite = await prisma.boardInvite.findUnique({
       where: {
-        boardId_userId: {
-          boardId,
-          userId: user.id,
-        },
+        boardId_invitedUserId: { boardId, invitedUserId: user.id },
       },
-      update: { role },
-      create: {
-        boardId,
-        userId: user.id,
-        role,
+      select: {
+        id: true,
+        role: true,
+        status: true,
       },
     });
+
+    if (existingInvite && existingInvite.status === "PENDING") {
+      if (existingInvite.role === role) {
+        return { error: "User already has a pending invite to this board" };
+      }
+    }
+
+    let inviteWasUpdated = false;
+
+    if (existingInvite && existingInvite.status === "PENDING") {
+      await prisma.boardInvite.update({
+        where: { id: existingInvite.id },
+        data: { role, status: "PENDING" },
+      });
+      inviteWasUpdated = true;
+    } else {
+      await prisma.boardInvite.upsert({
+        where: {
+          boardId_invitedUserId: { boardId, invitedUserId: user.id },
+        },
+        update: { role, status: "PENDING" },
+        create: {
+          boardId,
+          invitedUserId: user.id,
+          invitedById: session.user.id,
+          role,
+          status: "PENDING",
+        },
+      });
+    }
 
     await logBoardActivity(
       boardId,
       session.user.id,
       ActivityType.INVITED_MEMBER,
-      `invited ${user.name || email} as ${role.toLowerCase()}`,
+      `${inviteWasUpdated ? "updated invite for" : "invited"} ${
+        user.name || email
+      } as ${role.toLowerCase()}`,
     );
+
+    broadcastMemberInvited({ boardId, userId: session.user.id, email });
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };

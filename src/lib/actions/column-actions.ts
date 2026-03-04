@@ -7,9 +7,26 @@ import { getServerSession } from "@/lib/auth/get-session";
 import { requireBoardPermission } from "@/lib/auth/permissions";
 import { ActivityType, BoardRole } from "@prisma/client";
 import { logBoardActivity } from "@/lib/log-activity";
+import {
+  broadcastColumnCreated,
+  broadcastColumnUpdated,
+  broadcastColumnDeleted,
+  broadcastColumnMoved,
+} from "@/lib/socket/broadcast";
+
+const VALID_COLUMN_COLORS = [
+  "gray",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "blue",
+  "purple",
+  "pink",
+] as const;
 
 const createColumnSchema = z.object({
-  title: z.string().min(1, "Column title is required"),
+  title: z.string().min(1, "Column title is required").max(50),
   boardId: z.string(),
 });
 
@@ -56,6 +73,12 @@ export async function createColumn(formData: FormData) {
       { columnId: column.id },
     );
 
+    broadcastColumnCreated({
+      boardId,
+      userId: session.user.id,
+      columnId: column.id,
+    });
+
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
   } catch (error) {
@@ -93,6 +116,8 @@ export async function deleteColumn(columnId: string, boardId: string) {
       { columnId },
     );
 
+    broadcastColumnDeleted({ boardId, userId: session.user.id, columnId });
+
     await prisma.column.delete({
       where: { id: columnId },
     });
@@ -124,25 +149,28 @@ export async function updateColumnTitle(
 
   try {
     await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
-    if (title.trim().length === 0) {
+    const trimmedTitle = title.trim();
+    if (trimmedTitle.length === 0) {
       return { error: "Column title cannot be empty" };
     }
-    if (title.length > 50) {
+    if (trimmedTitle.length > 50) {
       return { error: "Column title cannot exceed 50 characters" };
     }
 
     await prisma.column.update({
       where: { id: columnId },
-      data: { title },
+      data: { title: trimmedTitle },
     });
 
     await logBoardActivity(
       boardId,
       session.user.id,
       ActivityType.UPDATED_COLUMN,
-      `renamed column to "${title}"`,
+      `renamed column to "${trimmedTitle}"`,
       { columnId },
     );
+
+    broadcastColumnUpdated({ boardId, userId: session.user.id, columnId });
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
@@ -185,6 +213,8 @@ export async function toggleColumnCollapse(columnId: string, boardId: string) {
       { columnId },
     );
 
+    broadcastColumnUpdated({ boardId, userId: session.user.id, columnId });
+
     return { success: true };
   } catch (error) {
     if (
@@ -223,6 +253,8 @@ export async function moveColumn(
       { columnId },
     );
 
+    broadcastColumnMoved({ boardId, userId: session.user.id, columnId });
+
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
   } catch (error) {
@@ -234,5 +266,122 @@ export async function moveColumn(
     }
 
     return { error: "Failed to move column" };
+  }
+}
+
+export async function updateColumnColor(
+  columnId: string,
+  boardId: string,
+  color: string,
+) {
+  const session = await getServerSession();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  if (
+    !VALID_COLUMN_COLORS.includes(color as (typeof VALID_COLUMN_COLORS)[number])
+  ) {
+    return { error: "Invalid color" };
+  }
+
+  try {
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
+
+    await prisma.column.update({
+      where: { id: columnId },
+      data: { color },
+    });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.UPDATED_COLUMN,
+      `changed column color to "${color}"`,
+      { columnId },
+    );
+
+    broadcastColumnUpdated({ boardId, userId: session.user.id, columnId });
+
+    revalidatePath(`/boards/${boardId}`);
+    return { success: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "Insufficient permissions"
+    ) {
+      return { error: "You don't have permission to edit this board" };
+    }
+    return { error: "Failed to update column color" };
+  }
+}
+
+export async function duplicateColumn(columnId: string, boardId: string) {
+  const session = await getServerSession();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
+
+    const original = await prisma.column.findUnique({
+      where: { id: columnId },
+      include: { tasks: true },
+    });
+
+    if (!original) {
+      return { error: "Column not found" };
+    }
+
+    const maxPosition = await prisma.column.findFirst({
+      where: { boardId },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+
+    const newColumn = await prisma.column.create({
+      data: {
+        title: `${original.title} (copy)`,
+        boardId,
+        position: (maxPosition?.position ?? 0) + 1,
+        color: original.color,
+        tasks: {
+          create: original.tasks.map((task, index) => ({
+            title: task.title,
+            description: task.description,
+            position: index,
+            isCompleted: task.isCompleted,
+            dueDate: task.dueDate,
+            memberIds: task.memberIds,
+          })),
+        },
+      },
+    });
+
+    await logBoardActivity(
+      boardId,
+      session.user.id,
+      ActivityType.CREATED_COLUMN,
+      `duplicated column "${original.title}"`,
+      { columnId: newColumn.id },
+    );
+
+    broadcastColumnCreated({
+      boardId,
+      userId: session.user.id,
+      columnId: newColumn.id,
+    });
+
+    revalidatePath(`/boards/${boardId}`);
+    return { success: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "Insufficient permissions"
+    ) {
+      return { error: "You don't have permission to edit this board" };
+    }
+    return { error: "Failed to duplicate column" };
   }
 }

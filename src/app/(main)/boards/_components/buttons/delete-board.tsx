@@ -50,9 +50,12 @@ export function DeleteBoardButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="sm">
-          <Trash2Icon className="mr-2 h-4 w-4" />
-          Delete Board
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-destructive h-8 w-8"
+        >
+          <Trash2Icon className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -62,9 +65,9 @@ export function DeleteBoardButton({
             <div>
               <p>Are you sure you want to delete &quot;{boardTitle}&quot;?</p>
               {(columnCount > 0 || taskCount > 0) && (
-                <div className="mt-2 text-red-600 font-semibold">
+                <div className="mt-2 font-semibold text-red-600">
                   <p>This will permanently delete:</p>
-                  <ul className="list-disc list-inside mt-1">
+                  <ul className="mt-1 list-inside list-disc">
                     {columnCount > 0 && (
                       <li>
                         {columnCount} column{columnCount !== 1 ? "s" : ""}
@@ -88,7 +91,7 @@ export function DeleteBoardButton({
           <AlertDialogAction
             onClick={handleDelete}
             disabled={loading}
-            className="bg-destructive text-white hover:bg-destructive/90"
+            className="bg-destructive hover:bg-destructive/90 text-white"
           >
             {loading ? "Deleting..." : "Delete Board"}
           </AlertDialogAction>

@@ -1,6 +1,7 @@
 import { ColumnWithTasks } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { ChevronsLeftRight } from "lucide-react";
+import { COLUMN_COLOR_MAP } from "@/lib/constants";
 
 export default function CollapsedColumn({
   column,
@@ -13,16 +14,20 @@ export default function CollapsedColumn({
   disabled?: boolean;
   canEdit: boolean;
 }) {
+  const bgColor = COLUMN_COLOR_MAP[column.color] || "bg-gray-700";
+
   return (
-    <div className="w-8r relative m-2 h-full min-h-0 overflow-hidden rounded-lg bg-black">
+    <div
+      className={`relative m-2 w-10 shrink-0 self-start overflow-hidden rounded-lg ${bgColor}`}
+    >
       <div
-        className="m-1 mt-1 flex flex-row items-center gap-2 text-center text-slate-200 select-none"
+        className="flex items-center gap-2 p-2 text-center text-slate-200 select-none"
         style={{ writingMode: "vertical-rl" }}
       >
         <span
           className="overflow-hidden font-bold whitespace-nowrap"
           style={{
-            maxInlineSize: "25rem",
+            maxInlineSize: "18rem",
             textOverflow: "ellipsis",
             lineHeight: 1.1,
           }}

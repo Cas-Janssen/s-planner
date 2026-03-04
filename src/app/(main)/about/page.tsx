@@ -1,19 +1,47 @@
+import * as React from "react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+
 export default function AboutPage() {
   return (
-    <div>
-      <h1>About This Planner App</h1>
-      <p>This app helps you plan and organize your tasks efficiently.</p>
-      <p>
-        With features like drag-and-drop task management, customizable boards,
-        and real-time collaboration, you can streamline your workflow and boost
-        productivity.
-      </p>
-      <p>
-        Our goal is to provide a seamless and intuitive user experience,
-        allowing you to focus on what matters most: getting things done.
-      </p>
-      <p>Thank you for choosing our app, and we hope you enjoy using it!</p>
-      <p>Made with ❤️ by the student Cas</p>
-    </div>
+    <main className="flex justify-center p-8">
+      <Card className="w-full max-w-3xl">
+        <CardHeader>
+          <CardTitle>About This Planner App</CardTitle>
+          <CardDescription>
+            A simple, focused planner to help you organize tasks, manage boards,
+            and collaborate in real time.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="bg-muted rounded-md p-4 text-sm">
+              ✅ Drag-and-drop task management
+            </div>
+            <div className="bg-muted rounded-md p-4 text-sm">
+              🧩 Customizable boards &amp; columns
+            </div>
+            <div className="bg-muted rounded-md p-4 text-sm">
+              ⚡ Real-time updates and activity feed
+            </div>
+            <div className="bg-muted rounded-md p-4 text-sm">
+              🔒 Authentication and user profiles
+            </div>
+          </div>
+
+          <p className="text-muted-foreground mt-4 text-sm">
+            My goal is to provide a seamless, intuitive experience so you can
+            focus on what matters: getting things done. Thanks for using the
+            planner — made by Cas (student).
+          </p>
+        </CardContent>
+      </Card>
+    </main>
   );
 }

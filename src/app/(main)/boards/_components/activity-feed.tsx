@@ -1,13 +1,5 @@
 import { ActivityWithUser } from "@/types/database";
-
-function formatTimestamp(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
+import { formatTimestamp } from "@/lib/utils";
 
 export default function ActivityFeed({
   activities,

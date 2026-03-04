@@ -5,7 +5,14 @@ import { BoardMemberWithUser, TaskWithMembers } from "@/types/database";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Check, Pencil, Users } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  Pencil,
+  Users,
+  AlertTriangle,
+  Clock,
+} from "lucide-react";
 import { completeTask, updateTask } from "@/lib/actions/task-actions";
 import { toast } from "sonner";
 import { EditTaskDialog } from "./dialog/edit-task";
@@ -85,8 +92,34 @@ export default function TaskCard({
 
   const assignees = task.members || [];
   const dueLabel = task.dueDate
-    ? new Date(task.dueDate).toLocaleDateString()
+    ? new Date(task.dueDate).toLocaleDateString("en-US", {
+        month: "numeric",
+        day: "numeric",
+        year: "numeric",
+      })
     : null;
+
+  const deadlineStatus = (() => {
+    if (!task.dueDate || done) return null;
+    const now = new Date();
+    const due = new Date(task.dueDate);
+    const diffMs = due.getTime() - now.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays < 0) return "overdue" as const;
+    if (diffDays <= 1) return "due-today" as const;
+    if (diffDays <= 3) return "due-soon" as const;
+    return null;
+  })();
+
+  const deadlineBorderClass =
+    deadlineStatus === "overdue"
+      ? "border-red-500/60"
+      : deadlineStatus === "due-today"
+        ? "border-orange-500/60"
+        : deadlineStatus === "due-soon"
+          ? "border-yellow-500/60"
+          : "";
 
   return (
     <>
@@ -94,12 +127,14 @@ export default function TaskCard({
         className={[
           "group relative rounded-md shadow-sm",
           canEdit ? "cursor-pointer" : "cursor-default",
-          "hover:border-border focus-within:border-border border border-transparent transition-colors",
+          "hover:border-border focus-within:border-border border transition-colors",
           "px-3 py-3",
-          done ? "pl-8" : "focus-within:pl-8 hover:pl-8",
+          canEdit ? (done ? "pl-8" : "focus-within:pl-8 hover:pl-8") : "",
           "m-2 w-auto min-w-0",
           "transition-[padding] duration-150",
-          done ? "bg-muted/60 border-green-500/30" : "",
+          done
+            ? "bg-muted/60 border-green-500/30"
+            : deadlineBorderClass || "border-transparent",
           isPending ? "opacity-80" : "",
         ].join(" ")}
         aria-pressed={done}
@@ -195,9 +230,31 @@ export default function TaskCard({
         {(dueLabel || assignees.length > 0) && (
           <div className="text-muted-foreground mt-2 flex items-center justify-between gap-2 text-xs">
             {dueLabel && (
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {dueLabel}
+              <span
+                className={[
+                  "inline-flex items-center gap-1 rounded px-1 py-0.5",
+                  deadlineStatus === "overdue"
+                    ? "bg-red-500/15 font-medium text-red-500"
+                    : deadlineStatus === "due-today"
+                      ? "bg-orange-500/15 font-medium text-orange-500"
+                      : deadlineStatus === "due-soon"
+                        ? "bg-yellow-500/15 font-medium text-yellow-600 dark:text-yellow-400"
+                        : "",
+                ].join(" ")}
+              >
+                {deadlineStatus === "overdue" ? (
+                  <AlertTriangle className="h-3 w-3" />
+                ) : deadlineStatus === "due-today" ||
+                  deadlineStatus === "due-soon" ? (
+                  <Clock className="h-3 w-3" />
+                ) : (
+                  <Calendar className="h-3 w-3" />
+                )}
+                {deadlineStatus === "overdue"
+                  ? "Overdue"
+                  : deadlineStatus === "due-today"
+                    ? "Due today"
+                    : dueLabel}
               </span>
             )}
             {assignees.length > 0 && (

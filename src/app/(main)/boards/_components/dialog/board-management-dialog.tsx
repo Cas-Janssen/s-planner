@@ -28,7 +28,12 @@ export function BoardManagementDialog({
   canManage,
 }: BoardManagementDialogProps) {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("activity");
+
+  const canViewManagement =
+    currentUserRole === BoardRole.MANAGER ||
+    currentUserRole === BoardRole.MEMBER;
+
+  if (!canViewManagement) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -42,12 +47,12 @@ export function BoardManagementDialog({
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[85vh] w-full max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Board Management</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs defaultValue="activity" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="activity" className="gap-2">
               <Activity className="h-4 w-4" />

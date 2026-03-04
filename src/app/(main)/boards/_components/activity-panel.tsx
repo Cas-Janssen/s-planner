@@ -1,39 +1,14 @@
 import { ActivityWithUser } from "@/types/database";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
-function formatTimestamp(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
+import { formatTimestamp } from "@/lib/utils";
+import { activityTypeMap } from "@/lib/constants";
 export default function ActivityPanel({
   activities,
 }: {
   activities: ActivityWithUser[];
 }) {
   const [filter, setFilter] = useState<string>("all");
-
-  const activityTypeMap: Record<string, string> = {
-    CREATED_BOARD: "board",
-    UPDATED_BOARD: "board",
-    DELETED_BOARD: "board",
-    CREATED_COLUMN: "column",
-    UPDATED_COLUMN: "column",
-    DELETED_COLUMN: "column",
-    MOVED_COLUMN: "column",
-    CREATED_TASK: "task",
-    UPDATED_TASK: "task",
-    DELETED_TASK: "task",
-    MOVED_TASK: "task",
-    INVITED_MEMBER: "member",
-    UPDATED_DEADLINE: "task",
-    UPDATED_ASSIGNEES: "task",
-  };
 
   const filtered =
     filter === "all"

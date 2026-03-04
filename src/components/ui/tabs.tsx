@@ -12,7 +12,7 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      className={cn("inline-flex h-10 items-center justify-center", className)}
+      className={cn("flex flex-col", className)}
       {...props}
     />
   );

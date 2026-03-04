@@ -7,14 +7,28 @@ import { requireBoardPermission } from "@/lib/auth/permissions";
 import { ActivityType, BoardRole } from "@prisma/client";
 import { getServerSession } from "../auth/get-session";
 import { logBoardActivity } from "@/lib/log-activity";
+import {
+  broadcastTaskCreated,
+  broadcastTaskUpdated,
+  broadcastTaskDeleted,
+  broadcastTaskCompleted,
+  broadcastTaskMoved,
+} from "@/lib/socket/broadcast";
 
 const createTaskSchema = z.object({
-  title: z.string().min(1, "Task title is required"),
-  description: z.string().optional(),
+  title: z.string().min(1, "Task title is required").max(200),
+  description: z.string().max(2000).optional(),
   dueDate: z.string().optional(),
   memberIds: z.array(z.string()).optional(),
   columnId: z.string(),
   boardId: z.string(),
+});
+
+const updateTaskSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+  memberIds: z.array(z.string()).optional(),
 });
 
 export async function createTask(formData: FormData) {
@@ -65,6 +79,13 @@ export async function createTask(formData: FormData) {
       { taskId: task.id, columnId },
     );
 
+    broadcastTaskCreated({
+      boardId,
+      userId: session.user.id,
+      taskId: task.id,
+      columnId,
+    });
+
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
   } catch (err) {
@@ -105,6 +126,8 @@ export async function completeTask(
       { taskId },
     );
 
+    broadcastTaskCompleted({ boardId, userId: session.user.id, taskId });
+
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
   } catch (err) {
@@ -128,6 +151,11 @@ export async function updateTask(
   const session = await getServerSession();
   if (!session?.user) return { error: "Unauthorized" };
 
+  const validated = updateTaskSchema.safeParse(data);
+  if (!validated.success) {
+    return { error: "Invalid task data" };
+  }
+
   try {
     await requireBoardPermission(boardId, session.user.id, BoardRole.MEMBER);
 
@@ -142,16 +170,18 @@ export async function updateTask(
       dueDate?: Date | null;
       memberIds?: string[];
     } = {
-      title: data.title,
-      description: data.description,
+      title: validated.data.title,
+      description: validated.data.description,
     };
 
-    if (Object.prototype.hasOwnProperty.call(data, "dueDate")) {
-      updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    if ("dueDate" in validated.data) {
+      updateData.dueDate = validated.data.dueDate
+        ? new Date(validated.data.dueDate)
+        : null;
     }
 
-    if (Object.prototype.hasOwnProperty.call(data, "memberIds")) {
-      updateData.memberIds = data.memberIds || [];
+    if ("memberIds" in validated.data) {
+      updateData.memberIds = validated.data.memberIds || [];
     }
 
     await prisma.task.update({
@@ -163,15 +193,16 @@ export async function updateTask(
       boardId,
       session.user.id,
       ActivityType.UPDATED_TASK,
-      `updated task "${data.title || taskBefore?.title || "Untitled"}"`,
+      `updated task "${validated.data.title || taskBefore?.title || "Untitled"}"`,
       { taskId },
     );
 
-    if (
-      Object.prototype.hasOwnProperty.call(data, "dueDate") &&
+    const dueDateChanged =
+      "dueDate" in validated.data &&
       (taskBefore?.dueDate?.toISOString() || null) !==
-        (updateData.dueDate?.toISOString() || null)
-    ) {
+        (updateData.dueDate?.toISOString() || null);
+
+    if (dueDateChanged) {
       await logBoardActivity(
         boardId,
         session.user.id,
@@ -181,7 +212,7 @@ export async function updateTask(
       );
     }
 
-    if (Object.prototype.hasOwnProperty.call(data, "memberIds")) {
+    if ("memberIds" in validated.data) {
       await logBoardActivity(
         boardId,
         session.user.id,
@@ -190,6 +221,8 @@ export async function updateTask(
         { taskId },
       );
     }
+
+    broadcastTaskUpdated({ boardId, userId: session.user.id, taskId });
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
@@ -225,6 +258,7 @@ export async function deleteTask(taskId: string, boardId: string) {
       where: { id: taskId },
     });
 
+    broadcastTaskDeleted({ boardId, userId: session.user.id, taskId });
     revalidatePath(`/boards/${boardId}`);
     return { success: true };
   } catch (err) {
@@ -276,6 +310,13 @@ export async function moveTask(
         },
       );
     }
+
+    broadcastTaskMoved({
+      boardId,
+      userId: session.user.id,
+      taskId,
+      columnId: targetColumnId,
+    });
 
     revalidatePath(`/boards/${boardId}`);
     return { success: true };

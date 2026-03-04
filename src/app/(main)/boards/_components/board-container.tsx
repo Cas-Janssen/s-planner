@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { BoardWithDetails } from "@/types/database";
 import DragableColumn from "./dragable-column";
 import CollapsedColumn from "./collapsed-column";
@@ -13,6 +14,8 @@ import { moveTask } from "@/lib/actions/task-actions";
 import { positionBetween } from "@/lib/helpers/position-calculator";
 import { BoardRole } from "@prisma/client";
 import { toast } from "sonner";
+import { useBoardSocket } from "@/lib/socket/use-board-socket";
+import { SOCKET_EVENTS } from "@/lib/socket/events";
 
 export default function BoardContainer({
   data,
@@ -38,6 +41,17 @@ export default function BoardContainer({
 
   const canEdit = role === BoardRole.MANAGER || role === BoardRole.MEMBER;
   const canManage = role === BoardRole.MANAGER;
+
+  const router = useRouter();
+
+  useBoardSocket(data.id, (event) => {
+    if (event === SOCKET_EVENTS.BOARD_DELETED) {
+      toast.info("This board has been deleted");
+      router.push("/boards");
+      return;
+    }
+    router.refresh();
+  });
 
   useEffect(() => {
     setColumns(data.columns);
@@ -139,11 +153,13 @@ export default function BoardContainer({
   };
 
   return (
-    <div className="flex grow flex-col">
-      <BoardNavbar board={data} role={role} canManage={canManage} />
-      <div className="flex grow flex-row overflow-x-auto">
+    <div className="flex w-full grow flex-col">
+      <div className="mx-auto w-full max-w-screen-2xl px-4">
+        <BoardNavbar board={data} role={role} canManage={canManage} />
+      </div>
+      <div className="relative mx-auto flex w-[95vw] grow flex-row overflow-x-auto">
         <ScrollArea className="flex w-auto grow rounded-md whitespace-nowrap">
-          <div className="flex flex-row pr-2">
+          <div className="mx-auto flex w-fit flex-row pr-2">
             {canEdit ? (
               <DragDropContext onDragEnd={onDragEnd}>
                 <Droppable
@@ -190,7 +206,7 @@ export default function BoardContainer({
                 </Droppable>
               </DragDropContext>
             ) : (
-              <div className="flex flex-row">
+              <div className="flex flex-row items-start">
                 {columns.map((column) => {
                   const isCollapsed =
                     collapsed[column.id] ?? Boolean(column.isCollapsed);
@@ -220,7 +236,13 @@ export default function BoardContainer({
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-        {canEdit && <AddColumnDialog boardId={data.id} />}
+        {canEdit && (
+          <div className="pointer-events-none absolute inset-0 z-10">
+            <div className="pointer-events-auto absolute right-4 bottom-4">
+              <AddColumnDialog boardId={data.id} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
