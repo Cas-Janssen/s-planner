@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum ActivityType {
+  CREATED_BOARD
+  UPDATED_BOARD
+  DELETED_BOARD
+  INVITED_MEMBER
+  UPDATED_MEMBER_ROLE
+  REMOVED_MEMBER
+  CREATED_COLUMN
+  UPDATED_COLUMN
+  DELETED_COLUMN
+  MOVED_COLUMN
+  CREATED_TASK
+  UPDATED_TASK
+  DELETED_TASK
+  MOVED_TASK
+  UPDATED_DEADLINE
+  UPDATED_ASSIGNEES
+}
+
+enum BoardRole {
+  MANAGER
+  MEMBER
+  VIEWER
+}
+
+enum BoardType {
+  PUBLIC
+  PRIVATE
+}
+
+model Board {
+  id    String    @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  type  BoardType @default(PRIVATE)
+
+  columns    Column[]
+  activities Activity[]
+  members    BoardMember[]
+  invites    BoardInvite[]
+
+  User        User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Activity {
+  id     String       @id @default(auto()) @map("_id") @db.ObjectId
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  type   ActivityType
+
+  message  String?
+  metadata Json?
+
+  board    Board?  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId  String? @db.ObjectId
+  column   Column? @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  columnId String? @db.ObjectId
+  task     Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  taskId   String? @db.ObjectId
+
+  createdAt DateTime @default(now())
+}
+
+model BoardMember {
+  id   String    @id @default(auto()) @map("_id") @db.ObjectId
+  role BoardRole
+
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId String @db.ObjectId
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+
+  @@unique([boardId, userId])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model BoardInvite {
+  id     String       @id @default(auto()) @map("_id") @db.ObjectId
+  role   BoardRole    @default(MEMBER)
+  status InviteStatus @default(PENDING)
+
+  board         Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId       String @db.ObjectId
+  invitedUser   User   @relation("invitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedUserId String
+  invitedBy     User   @relation("invitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedById   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, invitedUserId])
+}
+
+model Column {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  position    Float
+  isCollapsed Boolean @default(false)
+  color       String  @default("gray")
+
+  activities Activity[]
+  tasks      Task[]
+
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId String @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId])
+}
+
+model Task {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  position    Float
+  isCompleted Boolean @default(false)
+
+  description String?
+  dueDate     DateTime?
+
+  activities Activity[]
+
+  column    Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  columnId  String   @db.ObjectId
+  members   User[]   @relation(fields: [memberIds], references: [id])
+  memberIds String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([columnId])
+}
+
+model User {
+  id            String  @id @map("_id")
+  name          String
+  email         String
+  emailVerified Boolean @default(false)
+
+  image String?
+
+  sessions        Session[]
+  accounts        Account[]
+  activities      Activity[]
+  boards          BoardMember[]
+  createdBoards   Board[]
+  receivedInvites BoardInvite[] @relation("invitedUser")
+  sentInvites     BoardInvite[] @relation("invitedBy")
+
+  tasks   Task[]   @relation(fields: [taskIds], references: [id])
+  taskIds String[] @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @map("_id")
+  expiresAt DateTime
+  token     String
+
+  ipAddress String?
+  userAgent String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id         String @id @map("_id")
+  accountId  String
+  providerId String
+
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @map("_id")
+  identifier String
+  value      String
+  expiresAt  DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
