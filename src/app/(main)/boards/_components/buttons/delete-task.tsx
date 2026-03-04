@@ -15,28 +15,40 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Trash2Icon } from "lucide-react";
+import { toast } from "sonner";
+import { useBoardContext } from "../board-context";
 
 export function DeleteTaskButton({
   taskId,
   boardId,
   taskTitle,
+  columnId,
 }: {
   taskId: string;
   boardId: string;
   taskTitle: string;
+  columnId: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { optimisticDeleteTask, snapshotColumns, rollbackColumns } =
+    useBoardContext();
+
   async function handleDelete() {
-    setLoading(true);
     setError(null);
+
+    const snapshot = snapshotColumns();
+
+    optimisticDeleteTask(taskId, columnId);
 
     const result = await deleteTask(taskId, boardId);
 
     if (result?.error) {
-      setError(result.error);
-      setLoading(false);
+      rollbackColumns(snapshot);
+      toast.error(result.error);
+    } else {
+      toast.success("Task deleted");
     }
   }
 

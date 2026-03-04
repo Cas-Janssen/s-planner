@@ -16,6 +16,7 @@ import { BoardRole } from "@prisma/client";
 import { toast } from "sonner";
 import { useBoardSocket } from "@/lib/socket/use-board-socket";
 import { SOCKET_EVENTS } from "@/lib/socket/events";
+import { BoardProvider } from "./board-context";
 
 export default function BoardContainer({
   data,
@@ -153,97 +154,99 @@ export default function BoardContainer({
   };
 
   return (
-    <div className="flex w-full grow flex-col">
-      <div className="mx-auto w-full max-w-screen-2xl px-4">
-        <BoardNavbar board={data} role={role} canManage={canManage} />
-      </div>
-      <div className="relative mx-auto flex w-[95vw] grow flex-row overflow-x-auto">
-        <ScrollArea className="flex w-auto grow rounded-md whitespace-nowrap">
-          <div className="mx-auto flex w-fit flex-row pr-2">
-            {canEdit ? (
-              <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable
-                  droppableId="board-columns"
-                  type="column"
-                  direction="horizontal"
-                >
-                  {(provided) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className="flex flex-row"
-                    >
-                      {columns.map((column, index) => {
-                        const isCollapsed =
-                          collapsed[column.id] ?? Boolean(column.isCollapsed);
-                        const isBusy = Boolean(
-                          pending[column.id] || isPending || isMoving,
-                        );
+    <BoardProvider columns={columns} setColumns={setColumns} boardId={data.id}>
+      <div className="flex w-full grow flex-col">
+        <div className="mx-auto w-full max-w-screen-2xl px-4">
+          <BoardNavbar board={data} role={role} canManage={canManage} />
+        </div>
+        <div className="relative mx-auto flex w-[95vw] grow flex-row overflow-x-auto">
+          <ScrollArea className="flex w-auto grow rounded-md whitespace-nowrap">
+            <div className="mx-auto flex w-fit flex-row pr-2">
+              {canEdit ? (
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable
+                    droppableId="board-columns"
+                    type="column"
+                    direction="horizontal"
+                  >
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="flex flex-row"
+                      >
+                        {columns.map((column, index) => {
+                          const isCollapsed =
+                            collapsed[column.id] ?? Boolean(column.isCollapsed);
+                          const isBusy = Boolean(
+                            pending[column.id] || isPending || isMoving,
+                          );
 
-                        return !isCollapsed ? (
-                          <DragableColumn
-                            key={column.id}
-                            column={column}
-                            onToggle={() => onToggle(column.id)}
-                            disabled={isBusy}
-                            canEdit={canEdit}
-                            draggableIndex={index}
-                            members={data.members}
-                          />
-                        ) : (
-                          <CollapsedColumn
-                            key={column.id}
-                            column={column}
-                            onToggle={() => onToggle(column.id)}
-                            disabled={isBusy}
-                            canEdit={canEdit}
-                          />
-                        );
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
-            ) : (
-              <div className="flex flex-row items-start">
-                {columns.map((column) => {
-                  const isCollapsed =
-                    collapsed[column.id] ?? Boolean(column.isCollapsed);
-                  const isBusy = Boolean(pending[column.id] || isPending);
+                          return !isCollapsed ? (
+                            <DragableColumn
+                              key={column.id}
+                              column={column}
+                              onToggle={() => onToggle(column.id)}
+                              disabled={isBusy}
+                              canEdit={canEdit}
+                              draggableIndex={index}
+                              members={data.members}
+                            />
+                          ) : (
+                            <CollapsedColumn
+                              key={column.id}
+                              column={column}
+                              onToggle={() => onToggle(column.id)}
+                              disabled={isBusy}
+                              canEdit={canEdit}
+                            />
+                          );
+                        })}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              ) : (
+                <div className="flex flex-row items-start">
+                  {columns.map((column) => {
+                    const isCollapsed =
+                      collapsed[column.id] ?? Boolean(column.isCollapsed);
+                    const isBusy = Boolean(pending[column.id] || isPending);
 
-                  return !isCollapsed ? (
-                    <DragableColumn
-                      key={column.id}
-                      column={column}
-                      onToggle={() => onToggle(column.id)}
-                      disabled={isBusy}
-                      canEdit={canEdit}
-                      members={data.members}
-                    />
-                  ) : (
-                    <CollapsedColumn
-                      key={column.id}
-                      column={column}
-                      onToggle={() => onToggle(column.id)}
-                      disabled={isBusy}
-                      canEdit={canEdit}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-        {canEdit && (
-          <div className="pointer-events-none absolute inset-0 z-10">
-            <div className="pointer-events-auto absolute right-4 bottom-4">
-              <AddColumnDialog boardId={data.id} />
+                    return !isCollapsed ? (
+                      <DragableColumn
+                        key={column.id}
+                        column={column}
+                        onToggle={() => onToggle(column.id)}
+                        disabled={isBusy}
+                        canEdit={canEdit}
+                        members={data.members}
+                      />
+                    ) : (
+                      <CollapsedColumn
+                        key={column.id}
+                        column={column}
+                        onToggle={() => onToggle(column.id)}
+                        disabled={isBusy}
+                        canEdit={canEdit}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          {canEdit && (
+            <div className="pointer-events-none absolute inset-0 z-10">
+              <div className="pointer-events-auto absolute right-4 bottom-4">
+                <AddColumnDialog boardId={data.id} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </BoardProvider>
   );
 }

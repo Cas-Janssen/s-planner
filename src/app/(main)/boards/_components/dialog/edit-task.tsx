@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { PencilIcon } from "lucide-react";
 import { toast } from "sonner";
 import { BoardMemberWithUser } from "@/types/database";
+import { useBoardContext } from "../board-context";
 
 interface EditTaskDialogProps {
   task: {
@@ -48,26 +49,52 @@ export function EditTaskDialog({
   );
   const [memberIds, setMemberIds] = useState<string[]>(task.memberIds || []);
 
+  const { optimisticUpdateTask, snapshotColumns, rollbackColumns } =
+    useBoardContext();
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    const result = await updateTask(task.id, boardId, {
+    const updateData = {
       title,
       description: description || null,
       dueDate: dueDate || null,
       memberIds,
-    });
+    };
+
+    const resolvedMembers = memberIds
+      .map((uid) => {
+        const m = members.find((mb) => mb.userId === uid);
+        return m?.user
+          ? {
+              id: m.user.id,
+              name: m.user.name || "",
+              email: m.user.email || "",
+              image: (m.user as { image?: string | null }).image ?? null,
+            }
+          : null;
+      })
+      .filter(Boolean) as Array<{
+      id: string;
+      name: string;
+      email: string;
+      image: string | null;
+    }>;
+
+    const snapshot = snapshotColumns();
+
+    optimisticUpdateTask(task.id, updateData, resolvedMembers);
+
+    setOpen(false);
+
+    const result = await updateTask(task.id, boardId, updateData);
 
     if (result?.error) {
-      setError(result.error);
-      setLoading(false);
-    } else if (result?.success) {
+      rollbackColumns(snapshot);
+      toast.error(result.error);
+    } else {
       toast.success("Task updated successfully");
-      setLoading(false);
-      setError(null);
-      setOpen(false);
     }
   }
 

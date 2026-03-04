@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { BoardMemberWithUser } from "@/types/database";
+import { useBoardContext } from "../board-context";
 
 interface TaskDraft {
   title: string;
@@ -41,6 +42,9 @@ export function AddTaskDialog({
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [memberIds, setMemberIds] = useState<string[]>([]);
+
+  const { optimisticAddTask, snapshotColumns, rollbackColumns } =
+    useBoardContext();
 
   const storageKey = `task-draft-${columnId}`;
 
@@ -76,13 +80,52 @@ export function AddTaskDialog({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    const resolvedMembers = memberIds
+      .map((uid) => {
+        const m = members.find((mb) => mb.userId === uid);
+        return m?.user
+          ? {
+              id: m.user.id,
+              name: m.user.name || "",
+              email: m.user.email || "",
+              image: (m.user as { image?: string | null }).image ?? null,
+            }
+          : null;
+      })
+      .filter(Boolean) as Array<{
+      id: string;
+      name: string;
+      email: string;
+      image: string | null;
+    }>;
+
+    const snapshot = snapshotColumns();
+
+    optimisticAddTask(
+      columnId,
+      {
+        title,
+        description: description || null,
+        dueDate: dueDate || null,
+        memberIds,
+      },
+      resolvedMembers,
+    );
+
+    localStorage.removeItem(storageKey);
+    setOpen(false);
+    const savedTitle = title;
+    setTitle("");
+    setDescription("");
+    setDueDate("");
+    setMemberIds([]);
 
     const formData = new FormData();
     formData.append("columnId", columnId);
     formData.append("boardId", boardId);
-    formData.append("title", title);
+    formData.append("title", savedTitle);
     if (description) formData.append("description", description);
     if (dueDate) formData.append("dueDate", dueDate);
     memberIds.forEach((memberId) => formData.append("memberIds", memberId));
@@ -90,18 +133,10 @@ export function AddTaskDialog({
     const result = await createTask(formData);
 
     if (result?.error) {
-      setError(result.error);
-      setLoading(false);
-    } else if (result?.success) {
+      rollbackColumns(snapshot);
+      toast.error(result.error);
+    } else {
       toast.success("Task added successfully");
-      localStorage.removeItem(storageKey);
-      setOpen(false);
-      setTitle("");
-      setDescription("");
-      setDueDate("");
-      setMemberIds([]);
-      setError(null);
-      setLoading(false);
     }
   }
 

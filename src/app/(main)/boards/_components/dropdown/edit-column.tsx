@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useBoardContext } from "../board-context";
 
 const COLUMN_COLORS = [
   { label: "Gray", value: "gray", class: "bg-gray-500" },
@@ -54,6 +55,13 @@ export default function EditColumnDropdown({
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  const {
+    optimisticDeleteColumn,
+    optimisticUpdateColumnColor,
+    snapshotColumns,
+    rollbackColumns,
+  } = useBoardContext();
+
   const handleDuplicate = () => {
     startTransition(async () => {
       const res = await duplicateColumn(column.id, column.boardId);
@@ -74,9 +82,14 @@ export default function EditColumnDropdown({
   };
 
   const handleColorChange = (color: string) => {
+    const snapshot = snapshotColumns();
+
+    optimisticUpdateColumnColor(column.id, color);
+
     startTransition(async () => {
       const res = await updateColumnColor(column.id, column.boardId, color);
       if (res?.error) {
+        rollbackColumns(snapshot);
         toast.error(res.error);
       } else {
         toast.success("Color updated");
@@ -85,12 +98,16 @@ export default function EditColumnDropdown({
   };
 
   const handleDelete = () => {
+    const snapshot = snapshotColumns();
+
+    optimisticDeleteColumn(column.id);
+    setShowDeleteDialog(false);
+
     startTransition(async () => {
       const res = await deleteColumn(column.id, column.boardId);
       if (res?.error) {
+        rollbackColumns(snapshot);
         toast.error(res.error);
-      } else {
-        setShowDeleteDialog(false);
       }
     });
   };
