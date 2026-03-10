@@ -70,7 +70,7 @@ export function SignUpForm() {
     if (error) {
       setError(error.message || "Something went wrong");
     } else {
-      router.push("/account");
+      router.push("/dashboard");
     }
   }
 
