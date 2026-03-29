@@ -1,0 +1,26 @@
+export const COLUMN_COLOR_MAP: Record<string, string> = {
+  gray: "bg-gray-700",
+  red: "bg-red-900/80",
+  orange: "bg-orange-900/80",
+  yellow: "bg-yellow-900/80",
+  green: "bg-green-900/80",
+  blue: "bg-blue-900/80",
+  purple: "bg-purple-900/80",
+  pink: "bg-pink-900/80",
+};
+export const activityTypeMap: Record<string, string> = {
+  CREATED_BOARD: "board",
+  UPDATED_BOARD: "board",
+  DELETED_BOARD: "board",
+  CREATED_COLUMN: "column",
+  UPDATED_COLUMN: "column",
+  DELETED_COLUMN: "column",
+  MOVED_COLUMN: "column",
+  CREATED_TASK: "task",
+  UPDATED_TASK: "task",
+  DELETED_TASK: "task",
+  MOVED_TASK: "task",
+  INVITED_MEMBER: "member",
+  UPDATED_DEADLINE: "task",
+  UPDATED_ASSIGNEES: "task",
+};

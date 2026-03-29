@@ -7,25 +7,120 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Board {
-  id    String @id @default(auto()) @map("_id") @db.ObjectId
-  title String
+enum ActivityType {
+  CREATED_BOARD
+  UPDATED_BOARD
+  DELETED_BOARD
+  INVITED_MEMBER
+  UPDATED_MEMBER_ROLE
+  REMOVED_MEMBER
+  CREATED_COLUMN
+  UPDATED_COLUMN
+  DELETED_COLUMN
+  MOVED_COLUMN
+  CREATED_TASK
+  UPDATED_TASK
+  DELETED_TASK
+  MOVED_TASK
+  UPDATED_DEADLINE
+  UPDATED_ASSIGNEES
+}
 
-  columns Column[]
+enum BoardRole {
+  MANAGER
+  MEMBER
+  VIEWER
+}
+
+enum BoardType {
+  PUBLIC
+  PRIVATE
+}
+
+model Board {
+  id    String    @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  type  BoardType @default(PRIVATE)
+
+  columns    Column[]
+  activities Activity[]
+  members    BoardMember[]
+  invites    BoardInvite[]
+
+  User        User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Column {
-  id    String @id @default(auto()) @map("_id") @db.ObjectId
-  title String
-  order Int
+model Activity {
+  id     String       @id @default(auto()) @map("_id") @db.ObjectId
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  type   ActivityType
+
+  message  String?
+  metadata Json?
+
+  board    Board?  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId  String? @db.ObjectId
+  column   Column? @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  columnId String? @db.ObjectId
+  task     Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  taskId   String? @db.ObjectId
+
+  createdAt DateTime @default(now())
+}
+
+model BoardMember {
+  id   String    @id @default(auto()) @map("_id") @db.ObjectId
+  role BoardRole
 
   board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   boardId String @db.ObjectId
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
 
-  tasks Task[]
+  @@unique([boardId, userId])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model BoardInvite {
+  id     String       @id @default(auto()) @map("_id") @db.ObjectId
+  role   BoardRole    @default(MEMBER)
+  status InviteStatus @default(PENDING)
+
+  board         Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId       String @db.ObjectId
+  invitedUser   User   @relation("invitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedUserId String
+  invitedBy     User   @relation("invitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedById   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, invitedUserId])
+}
+
+model Column {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  position    Float
+  isCollapsed Boolean @default(false)
+  color       String  @default("gray")
+
+  activities Activity[]
+  tasks      Task[]
+
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId String @db.ObjectId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -36,11 +131,18 @@ model Column {
 model Task {
   id          String  @id @default(auto()) @map("_id") @db.ObjectId
   title       String
-  description String?
-  order       Int
+  position    Float
+  isCompleted Boolean @default(false)
 
-  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  columnId String @db.ObjectId
+  description String?
+  dueDate     DateTime?
+
+  activities Activity[]
+
+  column    Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  columnId  String   @db.ObjectId
+  members   User[]   @relation(fields: [memberIds], references: [id])
+  memberIds String[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,15 +151,26 @@ model Task {
 }
 
 model User {
-  id            String    @id @map("_id")
+  id            String  @id @map("_id")
   name          String
   email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  emailVerified Boolean @default(false)
+
+  image String?
+
+  sessions        Session[]
+  accounts        Account[]
+  activities      Activity[]
+  boards          BoardMember[]
+  createdBoards   Board[]
+  receivedInvites BoardInvite[] @relation("invitedUser")
+  sentInvites     BoardInvite[] @relation("invitedBy")
+
+  tasks   Task[]   @relation(fields: [taskIds], references: [id])
+  taskIds String[] @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([email])
   @@map("user")
@@ -67,23 +180,25 @@ model Session {
   id        String   @id @map("_id")
   expiresAt DateTime
   token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
   ipAddress String?
   userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([token])
   @@map("session")
 }
 
 model Account {
-  id                    String    @id @map("_id")
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String @id @map("_id")
+  accountId  String
+  providerId String
+
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -91,8 +206,12 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("account")
 }
@@ -102,8 +221,9 @@ model Verification {
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@map("verification")
 }
