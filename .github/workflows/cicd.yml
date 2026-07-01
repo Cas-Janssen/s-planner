@@ -50,16 +50,15 @@ jobs:
 
   deploy:
     needs: build-and-push
-    runs-on: server-cas
+    runs-on: server-cas 
     steps:
-      - name: Pull latest repo (compose + config)
+      - name: Sync repo on server
         run: |
           cd /opt/planner-app
-          git pull origin main
-      - name: Pull latest image
-        run: |
-          docker pull ghcr.io/${{ github.repository }}:latest
-      - name: Restart stack
+          git fetch --all
+          git reset --hard origin/main
+      - name: Deploy containers
         run: |
           cd /opt/planner-app
+          docker compose pull
           docker compose up -d --remove-orphans
