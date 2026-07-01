@@ -83,7 +83,9 @@ jobs:
   
       - name: Deploy containers
         run: |
-          export BACKEND_IMAGE=${{ steps.image.outputs.image }}:latest
-  
+          export BACKEND_IMAGE=ghcr.io/cas-janssen/s-planner:latest
+      
+          cd /opt/planner-app
+      
           docker compose pull
           docker compose up -d --remove-orphans
