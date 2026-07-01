@@ -6,57 +6,92 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+# ---------------- TEST ----------------
   test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - name: Install deps
         run: npm ci
-      - name: Build
+
+      - name: Build project
         run: npm run build
 
+
+# ---------------- BUILD & PUSH ----------------
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Set lowercase image name
+        id: image
+        run: |
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}:latest .
-      - name: Push image
-        run: |
-          docker push ghcr.io/${{ github.repository }}:latest
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image }}:latest
+            ${{ steps.image.outputs.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+# ---------------- DEPLOY ----------------
   deploy:
     needs: build-and-push
-    runs-on: server-cas 
+    runs-on: server-cas
+
     steps:
+      - name: Set lowercase image name
+        id: image
+        run: |
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
       - name: Sync repo on server
         run: |
           cd /opt/planner-app
           git fetch --all
           git reset --hard origin/main
+
       - name: Deploy containers
         run: |
           cd /opt/planner-app
+
+          export BACKEND_IMAGE=${{ steps.image.outputs.image }}:latest
+
           docker compose pull
           docker compose up -d --remove-orphans
