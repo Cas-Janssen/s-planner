@@ -70,20 +70,20 @@ jobs:
 
 
 # ---------------- DEPLOY ----------------
-deploy:
-  needs: build-and-push
-  runs-on: server-cas
-
-  steps:
-    - name: Set lowercase image name
-      id: image
-      run: |
-        IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
-        echo "image=$IMAGE" >> $GITHUB_OUTPUT
-
-    - name: Deploy containers
-      run: |
-        export BACKEND_IMAGE=${{ steps.image.outputs.image }}:latest
-
-        docker compose pull
-        docker compose up -d --remove-orphans
+  deploy:
+    needs: build-and-push
+    runs-on: server-cas
+  
+    steps:
+      - name: Set lowercase image name
+        id: image
+        run: |
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+  
+      - name: Deploy containers
+        run: |
+          export BACKEND_IMAGE=${{ steps.image.outputs.image }}:latest
+  
+          docker compose pull
+          docker compose up -d --remove-orphans
