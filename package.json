@@ -7,7 +7,7 @@
     "dev:next": "next dev --turbopack",
     "build": "next build && npm run build:server",
     "build:server": "tsup server.ts --format esm --target node20 --out-dir dist",
-    "start": "NODE_ENV=production node dist/server.js",
+    "start": "NODE_ENV=production node dist/server.mjs",
     "lint": "eslint"
   },
   "dependencies": {
