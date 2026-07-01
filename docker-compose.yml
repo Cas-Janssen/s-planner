@@ -1,0 +1,32 @@
+services:
+  planner-app:
+    image: ${BACKEND_IMAGE}
+    container_name: planner-app
+    restart: unless-stopped
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${SERVER_PORT}
+      HOSTNAME: ${HOSTNAME:-}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.planner.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.planner.entrypoints=${TRAEFIK_ENTRYPOINT:-https}
+      - traefik.http.routers.planner.tls=true
+      - traefik.http.routers.planner.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.planner.loadbalancer.server.port=${SERVER_PORT}
+      - traefik.docker.network=-proxy
+      - traefik.http.services.planner.loadbalancer.sticky.cookie=true
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
