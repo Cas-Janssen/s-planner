@@ -20,7 +20,7 @@ services:
       - traefik.http.routers.planner.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.planner.entrypoints=${TRAEFIK_ENTRYPOINT:-https}
       - traefik.http.routers.planner.tls=true
-      - traefik.http.routers.planner.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-cloudflare}
+      - traefik.http.routers.planner.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
       - traefik.http.services.planner.loadbalancer.server.port=${SERVER_PORT}
       - traefik.docker.network=-proxy
       - traefik.http.services.planner.loadbalancer.sticky.cookie=true
